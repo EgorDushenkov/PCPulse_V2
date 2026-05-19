@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <ImageButton
+        android:id="@+id/screenshot_button"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_camera"
+        android:contentDescription="Screenshot"
+        android:background="?android:attr/selectableItemBackground" />
+
+    <ImageButton
+        android:id="@+id/mic_button"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_mic"
+        android:contentDescription="Mic Mute"
+        android:background="?android:attr/selectableItemBackground" />
+
+    <ImageButton
+        android:id="@+id/sleep_button"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_sleep"
+        android:contentDescription="Sleep"
+        android:background="?android:attr/selectableItemBackground" />
+
+    <ImageButton
+        android:id="@+id/shutdown_button"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:src="@drawable/ic_power"
+        android:contentDescription="Shutdown"
+        android:background="?android:attr/selectableItemBackground" />
+
+</LinearLayout>

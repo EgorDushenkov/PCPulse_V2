@@ -1,0 +1,39 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.PC" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/dark_bg</item>
+        <item name="colorPrimary">@color/purple</item>
+        <item name="colorAccent">@color/purple</item>
+        <item name="mainAccentColor">@color/purple</item>
+    </style>
+
+    <style name="Theme.PC" parent="Base.Theme.PC" />
+
+    <!-- Фиолетовая тема -->
+    <style name="AppTheme.Purple" parent="Theme.PC">
+        <item name="colorPrimary">@color/purple</item>
+        <item name="mainAccentColor">@color/purple</item>
+        <item name="colorAccent">@color/purple</item>
+    </style>
+
+    <!-- Бирюзовая тема -->
+    <style name="AppTheme.Turquoise" parent="Theme.PC">
+        <item name="colorPrimary">@color/turquoise</item>
+        <item name="mainAccentColor">@color/turquoise</item>
+        <item name="colorAccent">@color/turquoise</item>
+    </style>
+
+    <!-- Оранжевая тема -->
+    <style name="AppTheme.Orange" parent="Theme.PC">
+        <item name="colorPrimary">@color/neon_orange</item>
+        <item name="mainAccentColor">@color/neon_orange</item>
+        <item name="colorAccent">@color/neon_orange</item>
+    </style>
+
+    <!-- Зеленая тема -->
+    <style name="AppTheme.Green" parent="Theme.PC">
+        <item name="colorPrimary">@color/matrix_green</item>
+        <item name="mainAccentColor">@color/matrix_green</item>
+        <item name="colorAccent">@color/matrix_green</item>
+    </style>
+</resources>

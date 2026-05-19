@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="dark_bg">#121212</color>
+    <color name="card_bg">#1E1E1E</color>
+
+    <color name="text_white">#E0E0E0</color>
+    <color name="text_gray">#A0A0A0</color>
+
+    <!-- Основная палитра -->
+    <color name="purple">#BA55D3</color>
+    <color name="turquoise">#03DAC5</color>
+    <color name="neon_orange">#FF8C00</color>
+    <color name="matrix_green">#00FF41</color>
+
+    <!-- Переназначение системных цветов (для совместимости) -->
+    <color name="accent_neon">@color/turquoise</color>
+    <color name="color_cpu">@color/purple</color>
+    <color name="color_gpu">@color/purple</color>
+    <color name="color_ram">@color/turquoise</color>
+    <color name="color_disk">@color/turquoise</color>
+    <color name="color_net">@color/turquoise</color>
+    <color name="color_cooling">@color/purple</color>
+    <color name="color_procs">@color/purple</color>
+</resources>
