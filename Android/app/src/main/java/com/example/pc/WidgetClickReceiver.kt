@@ -14,32 +14,53 @@ class WidgetClickReceiver : BroadcastReceiver() {
         val type = intent.getStringExtra("WIDGET_TYPE")
         val ip = intent.getStringExtra("DEVICE_IP")
         val action = intent.getStringExtra("ACTION")
-        val value = intent.getIntExtra("VALUE", -1)
-
+        
         Log.d("WidgetClick", "Click received: type=$type, ip=$ip, action=$action")
 
         if (ip == null) return
 
+        // Handle generic media action from notification or single button
+        if (intent.action == "com.example.pc.MEDIA_ACTION") {
+            if (action != null) sendToService(context, ip, "media", action)
+            return
+        }
+
         when (type) {
             WidgetType.ACTION_BUTTON.name -> {
                 if (action != null) {
-                    sendCommand(ip, "run", "path" to action)
+                    sendToService(context, ip, "run", action)
                 }
             }
-            WidgetType.CONTROLS.name -> {
-                when (action) {
-                    "screenshot" -> sendCommand(ip, "screenshot")
-                    "mic_mute" -> sendCommand(ip, "mute_mic")
-                    "sleep" -> sendCommand(ip, "sleep")
-                    "shutdown" -> sendCommand(ip, "shutdown")
+            WidgetType.CONTROLS.name, 
+            WidgetType.SCREENSHOT.name,
+            WidgetType.MIC_MUTE.name,
+            WidgetType.SLEEP.name,
+            WidgetType.SHUTDOWN.name -> {
+                val cmd = when (action) {
+                    "screenshot" -> "screenshot"
+                    "mic_mute" -> "mute_mic"
+                    "sleep" -> "sleep"
+                    "shutdown" -> "shutdown"
+                    else -> action
                 }
+                if (cmd != null) sendToService(context, ip, cmd)
             }
             WidgetType.MEDIA_PLAYER.name -> {
                 if (action != null) {
-                    sendCommand(ip, "media", "command" to action)
+                    sendToService(context, ip, "media", action)
                 }
             }
         }
+    }
+
+    private fun sendToService(context: Context, ip: String, cmd: String, action: String? = null) {
+        val intent = Intent(context, PCForegroundService::class.java).apply {
+            this.action = PCForegroundService.ACTION_SEND_COMMAND
+            putExtra("DEVICE_IP", ip)
+            putExtra("CMD", cmd)
+            putExtra("ACTION", action)
+        }
+        context.startService(intent)
     }
 
     private fun sendCommand(ip: String, endpoint: String, vararg params: Pair<String, String>) {

@@ -48,4 +48,5 @@ dependencies {
     implementation(libs.converter.gson)
     implementation(libs.gson)
     implementation(libs.glide)
+    implementation(libs.androidx.media)
 }

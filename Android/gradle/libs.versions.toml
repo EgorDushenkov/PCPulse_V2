@@ -12,6 +12,7 @@ constraintlayout = "2.2.1"
 retrofit = "2.9.0"
 gson = "2.10.1"
 glide = "4.16.0"
+media = "1.7.0"
 
 
 [libraries]
@@ -27,6 +28,7 @@ retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = 
 converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
+androidx-media = { group = "androidx.media", name = "media", version.ref = "media" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

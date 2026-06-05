@@ -7,6 +7,11 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.media.app.NotificationCompat as MediaNotificationCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import android.graphics.Bitmap
 import com.google.gson.Gson
 import java.util.concurrent.ConcurrentHashMap
 
@@ -15,6 +20,7 @@ class PCForegroundService : Service() {
     private val gson = Gson()
     private val connections = ConcurrentHashMap<String, WebSocketManager>()
     private val deviceStats = ConcurrentHashMap<String, PCStats>()
+    private val mediaSessions = ConcurrentHashMap<String, MediaSessionCompat>()
 
     companion object {
         const val CHANNEL_ID = "PC_MONITOR_SERVICE"
@@ -23,6 +29,7 @@ class PCForegroundService : Service() {
         const val ACTION_STOP = "ACTION_STOP"
         const val ACTION_REFRESH = "ACTION_REFRESH"
         const val ACTION_STATS_UPDATE = "com.example.pc.STATS_UPDATE"
+        const val ACTION_SEND_COMMAND = "com.example.pc.ACTION_SEND_COMMAND"
 
         fun startService(context: Context) {
             val intent = Intent(context, PCForegroundService::class.java).apply {
@@ -60,6 +67,19 @@ class PCForegroundService : Service() {
             ACTION_START -> startForegroundService()
             ACTION_REFRESH -> updateConnections()
             ACTION_STOP -> stopSelf()
+            ACTION_SEND_COMMAND -> {
+                val ip = intent.getStringExtra("DEVICE_IP")
+                val cmd = intent.getStringExtra("CMD")
+                val action = intent.getStringExtra("ACTION")
+                if (ip != null && cmd != null) {
+                    val socket = connections[ip]
+                    if (action != null) {
+                        socket?.sendCommand(cmd, mapOf("action" to action))
+                    } else {
+                        socket?.sendCommand(cmd)
+                    }
+                }
+            }
         }
         return START_STICKY
     }
@@ -145,6 +165,29 @@ class PCForegroundService : Service() {
     }
 
     private fun updateNotification() {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val showMedia = prefs.getBoolean("MEDIA_NOTIF_ENABLED", true)
+        
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        if (showMedia) {
+            deviceStats.forEach { (ip, stats) ->
+                if (stats.media != null) {
+                    val session = getOrCreateMediaSession(ip, stats)
+                    val mediaNotif = createMediaNotification(ip, stats, session)
+                    notificationManager.notify(ip.hashCode(), mediaNotif)
+                } else {
+                    notificationManager.cancel(ip.hashCode())
+                    mediaSessions[ip]?.isActive = false
+                }
+            }
+        } else {
+            deviceStats.keys.forEach { ip -> 
+                notificationManager.cancel(ip.hashCode())
+                mediaSessions[ip]?.isActive = false
+            }
+        }
+
         val onlineCount = deviceStats.size
         val text = if (onlineCount > 0) {
             "Devices online: $onlineCount"
@@ -152,8 +195,92 @@ class PCForegroundService : Service() {
             "Searching for devices..."
         }
         val notification = createNotification(text)
-        val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    private fun getOrCreateMediaSession(ip: String, stats: PCStats): MediaSessionCompat {
+        return mediaSessions.getOrPut(ip) {
+            MediaSessionCompat(this, "PCSession_$ip").apply {
+                setCallback(object : MediaSessionCompat.Callback() {
+                    override fun onPlay() { sendMediaCommand(ip, "play_pause") }
+                    override fun onPause() { sendMediaCommand(ip, "play_pause") }
+                    override fun onSkipToNext() { sendMediaCommand(ip, "next") }
+                    override fun onSkipToPrevious() { sendMediaCommand(ip, "prev") }
+                })
+            }
+        }.apply {
+            val media = stats.media ?: return@apply
+            
+            val metadata = MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.title)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, media.artist)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, stats.pc_name)
+                .build()
+            setMetadata(metadata)
+
+            val state = if (media.status == 4) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED
+            setPlaybackState(PlaybackStateCompat.Builder()
+                .setState(state, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                .build())
+            
+            isActive = true
+        }
+    }
+
+    private fun sendMediaCommand(ip: String, command: String) {
+        val intent = Intent(this, PCForegroundService::class.java).apply {
+            action = ACTION_SEND_COMMAND
+            putExtra("DEVICE_IP", ip)
+            putExtra("CMD", "media")
+            putExtra("ACTION", command)
+        }
+        startService(intent)
+    }
+
+    private fun createMediaNotification(ip: String, stats: PCStats, session: MediaSessionCompat): Notification {
+        val media = stats.media ?: return createNotification("PC Online: ${stats.pc_name}")
+        
+        val reqCode = Math.abs(ip.hashCode())
+        
+        val prevIntent = Intent(this, WidgetClickReceiver::class.java).apply {
+            action = "com.example.pc.MEDIA_ACTION"
+            putExtra("DEVICE_IP", ip)
+            putExtra("ACTION", "prev")
+        }
+        val playIntent = Intent(this, WidgetClickReceiver::class.java).apply {
+            action = "com.example.pc.MEDIA_ACTION"
+            putExtra("DEVICE_IP", ip)
+            putExtra("ACTION", "play_pause")
+        }
+        val nextIntent = Intent(this, WidgetClickReceiver::class.java).apply {
+            action = "com.example.pc.MEDIA_ACTION"
+            putExtra("DEVICE_IP", ip)
+            putExtra("ACTION", "next")
+        }
+
+        val pPrev = PendingIntent.getBroadcast(this, reqCode + 1, prevIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val pPlay = PendingIntent.getBroadcast(this, reqCode + 2, playIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val pNext = PendingIntent.getBroadcast(this, reqCode + 3, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+        val playIcon = if (media.status == 4) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(media.title)
+            .setContentText("${stats.pc_name} - ${media.artist}")
+            .setLargeIcon(null as Bitmap?) 
+            .setStyle(MediaNotificationCompat.MediaStyle()
+                .setMediaSession(session.sessionToken)
+                .setShowActionsInCompactView(0, 1, 2))
+            .addAction(android.R.drawable.ic_media_previous, "Prev", pPrev)
+            .addAction(playIcon, "Play/Pause", pPlay)
+            .addAction(android.R.drawable.ic_media_next, "Next", pNext)
+            .setOngoing(true)
+            .setSilent(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            
+        return builder.build()
     }
 
     private fun createNotification(contentText: String): Notification {
@@ -187,6 +314,11 @@ class PCForegroundService : Service() {
     override fun onDestroy() {
         connections.values.forEach { it.disconnect() }
         connections.clear()
+        mediaSessions.values.forEach { 
+            it.isActive = false
+            it.release() 
+        }
+        mediaSessions.clear()
         super.onDestroy()
     }
 }

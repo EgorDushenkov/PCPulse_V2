@@ -158,6 +158,37 @@
         android:text="Переключение между Русским и Английским (RU/EN)"
         android:textColor="@color/text_gray"
         android:textSize="14sp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="24dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/media_notif_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Медиа в уведомлениях"
+            android:textColor="@color/text_white"
+            android:textSize="18sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switch_media_notif"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/media_notif_desc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Показывать плеер в шторке для активных устройств"
+        android:textColor="@color/text_gray"
+        android:textSize="14sp"
         android:layout_marginTop="4dp" />
 
 </LinearLayout>

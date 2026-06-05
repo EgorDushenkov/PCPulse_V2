@@ -36,7 +36,6 @@ class MainActivity : BaseActivity() {
     private lateinit var devicesRecyclerView: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
     private lateinit var fabSettings: FloatingActionButton
-    private lateinit var fabWidgets: FloatingActionButton
 
     private lateinit var deviceAdapter: DeviceAdapter
     private val devices = mutableListOf<Device>()
@@ -65,7 +64,6 @@ class MainActivity : BaseActivity() {
         devicesRecyclerView = findViewById(R.id.devicesRecyclerView)
         fabAdd = findViewById(R.id.fab_add)
         fabSettings = findViewById(R.id.fab_settings)
-        fabWidgets = findViewById(R.id.fab_widgets)
 
         setupRecyclerView()
         loadDevices()
@@ -92,12 +90,6 @@ class MainActivity : BaseActivity() {
         fabSettings.setOnClickListener {
             vibrate()
             val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-        }
-
-        fabWidgets.setOnClickListener {
-            vibrate()
-            val intent = Intent(this, WidgetDesignerActivity::class.java)
             startActivity(intent)
         }
     }

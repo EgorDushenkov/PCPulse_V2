@@ -393,6 +393,14 @@ class WidgetDesignerActivity : BaseActivity() {
         view.y = (config.y * cellHeight).toFloat()
         view.layoutParams.width = config.width * cellWidth
         view.layoutParams.height = config.height * cellHeight
+        
+        // Update the widget's internal layout logic (e.g. speedometers)
+        val card = view as? CardView
+        val content = card?.getChildAt(0)
+        if (content is UpdatableWidget) {
+            content.updateConfig(config)
+        }
+
         view.requestLayout()
         updateHandles(view)
     }
@@ -401,11 +409,33 @@ class WidgetDesignerActivity : BaseActivity() {
         val types = WidgetType.values()
         AlertDialog.Builder(this).setItems(types.map { it.name }.toTypedArray()) { _, i ->
             val type = types[i]
+            
+            // Auto-check for existing control buttons
+            if (isControlButton(type)) {
+                val hasControls = currentLayout.widgets.any { isControlButton(it.type) || it.type == WidgetType.CONTROLS }
+                if (hasControls) {
+                    Toast.makeText(this, "Можно добавить только одну кнопку управления или общую панель", Toast.LENGTH_SHORT).show()
+                    return@setItems
+                }
+            }
+            if (type == WidgetType.CONTROLS) {
+                 val hasControls = currentLayout.widgets.any { isControlButton(it.type) }
+                 if (hasControls) {
+                    Toast.makeText(this, "Сначала удалите отдельные кнопки управления", Toast.LENGTH_SHORT).show()
+                    return@setItems
+                }
+            }
+
             val newConfig = WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
             currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
             refreshWidgets()
             showWidgetSettingsDialog(newConfig)
         }.show()
+    }
+
+    private fun isControlButton(type: WidgetType): Boolean {
+        return type == WidgetType.SCREENSHOT || type == WidgetType.MIC_MUTE || 
+               type == WidgetType.SLEEP || type == WidgetType.SHUTDOWN
     }
 
     private fun saveWidget() {
@@ -434,17 +464,24 @@ class WidgetDesignerActivity : BaseActivity() {
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && appWidgetManager.isRequestPinAppWidgetSupported) {
             // Case 2: Request Pin from inside the app
             val myProvider = ComponentName(this, PCAppWidgetProvider::class.java)
+            
+            // This is the extra data that will be received by onReceive when the widget is pinned
+            val bundle = Bundle().apply {
+                putString("DEVICE_IP", selectedDevice)
+                putString("LAYOUT_JSON", layoutJson)
+            }
+            
             val intent = Intent(this, PCAppWidgetProvider::class.java).apply {
                 action = "com.example.pc.WIDGET_PINNED_SUCCESS"
-                putExtra("DEVICE_IP", selectedDevice)
-                putExtra("LAYOUT_JSON", layoutJson)
+                putExtras(bundle)
             }
+            
             val successCallback = PendingIntent.getBroadcast(
                 this, 0, intent, 
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            appWidgetManager.requestPinAppWidget(myProvider, null, successCallback)
+            appWidgetManager.requestPinAppWidget(myProvider, bundle, successCallback)
             Toast.makeText(this, "Разместите виджет на экране", Toast.LENGTH_LONG).show()
             finish()
         } else {

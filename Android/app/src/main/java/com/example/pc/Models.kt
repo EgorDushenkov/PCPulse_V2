@@ -48,7 +48,11 @@ enum class WidgetType {
     @SerializedName("gpu") GPU,
     @SerializedName("network") NETWORK,
     @SerializedName("action_button") ACTION_BUTTON,
-    @SerializedName("media_player") MEDIA_PLAYER
+    @SerializedName("media_player") MEDIA_PLAYER,
+    @SerializedName("screenshot") SCREENSHOT,
+    @SerializedName("mic_mute") MIC_MUTE,
+    @SerializedName("sleep") SLEEP,
+    @SerializedName("shutdown") SHUTDOWN
 }
 
 data class WidgetConfig(

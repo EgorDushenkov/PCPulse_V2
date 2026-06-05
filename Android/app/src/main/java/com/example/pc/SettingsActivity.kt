@@ -38,6 +38,14 @@ class SettingsActivity : BaseActivity() {
             updateLabels()
         }
 
+        val mediaNotifSwitch = findViewById<SwitchCompat>(R.id.switch_media_notif)
+        mediaNotifSwitch.isChecked = prefs.getBoolean("MEDIA_NOTIF_ENABLED", true)
+        mediaNotifSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("MEDIA_NOTIF_ENABLED", isChecked).apply()
+            vibrate()
+            PCForegroundService.refresh(this)
+        }
+
         findViewById<Button>(R.id.btn_theme_purple).setOnClickListener { vibrate(); saveTheme("PURPLE") }
         findViewById<Button>(R.id.btn_theme_turquoise).setOnClickListener { vibrate(); saveTheme("TURQUOISE") }
         findViewById<Button>(R.id.btn_theme_orange).setOnClickListener { vibrate(); saveTheme("ORANGE") }
@@ -66,6 +74,9 @@ class SettingsActivity : BaseActivity() {
         
         findViewById<TextView>(R.id.language_text).text = if (isRussian) "Язык приложения" else "App Language"
         findViewById<TextView>(R.id.language_desc).text = if (isRussian) "Переключение между RU и EN" else "Switch between RU and EN"
+
+        findViewById<TextView>(R.id.media_notif_text).text = if (isRussian) "Медиа в уведомлениях" else "Media in Notifications"
+        findViewById<TextView>(R.id.media_notif_desc).text = if (isRussian) "Показывать плеер в шторке для активных устройств" else "Show player in shade for active devices"
     }
 
     private fun saveTheme(theme: String) {
