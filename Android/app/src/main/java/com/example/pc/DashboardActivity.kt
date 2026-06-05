@@ -87,7 +87,6 @@ class DashboardActivity : BaseActivity() {
         openConstructorButton = findViewById(R.id.openConstructorButton)
 
         containers = mapOf(
-            WidgetType.CONTROLS to findViewById(R.id.controlsContainer),
             WidgetType.AUDIO_MIXER to findViewById(R.id.mixerContainer),
             WidgetType.STORAGE to findViewById(R.id.disksContainer),
             WidgetType.COOLING to findViewById(R.id.fansContainer),
@@ -111,17 +110,6 @@ class DashboardActivity : BaseActivity() {
         netDownText.text = "↓ ${s.network.down_kbps.toInt()} KB/s"
         netUpText.text = "↑ ${s.network.up_kbps.toInt()} KB/s"
 
-        updateDynamicWidget(WidgetType.CONTROLS) { 
-            WidgetFactory.create(
-                config = WidgetConfig(WidgetType.CONTROLS, 0, 0, 1, 1, deviceIp = ip), 
-                context = this, 
-                onVibrate = { vibrate() },
-                onScreenshot = ::showScreenshotDialog, 
-                onMicMute = ::sendMicMute,
-                onSleep = ::sendSleepCommand, 
-                onShutdown = ::sendShutdownCommand
-            ) 
-        }
         updateDynamicWidget(WidgetType.AUDIO_MIXER) { 
             WidgetFactory.create(
                 config = WidgetConfig(WidgetType.AUDIO_MIXER, 0, 0, 1, 1, deviceIp = ip), 

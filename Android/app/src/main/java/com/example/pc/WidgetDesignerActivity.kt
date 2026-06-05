@@ -406,26 +406,9 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun showAddWidgetDialog() {
-        val types = WidgetType.values()
+        val types = WidgetType.entries.toTypedArray()
         AlertDialog.Builder(this).setItems(types.map { it.name }.toTypedArray()) { _, i ->
             val type = types[i]
-            
-            // Auto-check for existing control buttons
-            if (isControlButton(type)) {
-                val hasControls = currentLayout.widgets.any { isControlButton(it.type) || it.type == WidgetType.CONTROLS }
-                if (hasControls) {
-                    Toast.makeText(this, "Можно добавить только одну кнопку управления или общую панель", Toast.LENGTH_SHORT).show()
-                    return@setItems
-                }
-            }
-            if (type == WidgetType.CONTROLS) {
-                 val hasControls = currentLayout.widgets.any { isControlButton(it.type) }
-                 if (hasControls) {
-                    Toast.makeText(this, "Сначала удалите отдельные кнопки управления", Toast.LENGTH_SHORT).show()
-                    return@setItems
-                }
-            }
-
             val newConfig = WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
             currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
             refreshWidgets()
@@ -434,8 +417,7 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun isControlButton(type: WidgetType): Boolean {
-        return type == WidgetType.SCREENSHOT || type == WidgetType.MIC_MUTE || 
-               type == WidgetType.SLEEP || type == WidgetType.SHUTDOWN
+        return type == WidgetType.ACTION_BUTTON
     }
 
     private fun saveWidget() {

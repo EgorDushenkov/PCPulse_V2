@@ -118,16 +118,6 @@ class PCAppWidgetProvider : AppWidgetProvider() {
                 val clickConfigs = mutableListOf<Triple<String?, Int, Int>>() // Action, sub-index, total-subs
                 
                 when (config.type) {
-                    WidgetType.CONTROLS -> {
-                        clickConfigs.add(Triple("screenshot", 0, 4))
-                        clickConfigs.add(Triple("mic_mute", 1, 4))
-                        clickConfigs.add(Triple("sleep", 2, 4))
-                        clickConfigs.add(Triple("shutdown", 3, 4))
-                    }
-                    WidgetType.SCREENSHOT -> clickConfigs.add(Triple("screenshot", 0, 1))
-                    WidgetType.MIC_MUTE -> clickConfigs.add(Triple("mic_mute", 0, 1))
-                    WidgetType.SLEEP -> clickConfigs.add(Triple("sleep", 0, 1))
-                    WidgetType.SHUTDOWN -> clickConfigs.add(Triple("shutdown", 0, 1))
                     WidgetType.MEDIA_PLAYER -> {
                         clickConfigs.add(Triple("prev", 0, 3))
                         clickConfigs.add(Triple("play_pause", 1, 3))
@@ -141,7 +131,7 @@ class PCAppWidgetProvider : AppWidgetProvider() {
                 clickConfigs.forEach { (subAction, subIdx, total) ->
                     val clickArea = RemoteViews(context.packageName, R.layout.widget_click_area)
                     val clickIntent = Intent(context, WidgetClickReceiver::class.java).apply {
-                        putExtra("WIDGET_TYPE", config.type.name)
+                        putExtra("WIDGET_TYPE", config.type?.name ?: "")
                         putExtra("DEVICE_IP", deviceIp)
                         putExtra("ACTION", subAction)
                     }

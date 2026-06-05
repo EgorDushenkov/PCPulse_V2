@@ -770,9 +770,6 @@ object WidgetFactory {
         onCloseCommand: ((String) -> Unit)? = null
     ): View {
         return when (config.type) {
-            WidgetType.CONTROLS -> ControlsWidgetView(context).apply {
-                setCallbacks(onVibrate, onScreenshot ?: {}, onMicMute ?: {}, onSleep ?: {}, onShutdown ?: {})
-            }
             WidgetType.AUDIO_MIXER -> AudioMixerWidgetView(context).apply {
                 setCallbacks(onVibrate, onVolumeChange ?: { _, _ -> })
             }
@@ -791,22 +788,7 @@ object WidgetFactory {
             WidgetType.MEDIA_PLAYER -> MediaPlayerWidgetView(context).apply {
                 setCallbacks(onVibrate, onMediaCommand ?: {})
             }
-            WidgetType.SCREENSHOT -> ActionButtonWidgetView(context).apply {
-                val cfg = config.copy(label = config.label ?: "Screenshot", action = "screenshot", useIcon = config.useIcon)
-                setup(cfg, onVibrate, { onScreenshot?.invoke() }, {}, {})
-            }
-            WidgetType.MIC_MUTE -> ActionButtonWidgetView(context).apply {
-                val cfg = config.copy(label = config.label ?: "Mic Mute", action = "mic_mute", useIcon = config.useIcon)
-                setup(cfg, onVibrate, { onMicMute?.invoke(true) }, {}, {})
-            }
-            WidgetType.SLEEP -> ActionButtonWidgetView(context).apply {
-                val cfg = config.copy(label = config.label ?: "Sleep", action = "sleep", useIcon = config.useIcon)
-                setup(cfg, onVibrate, { onSleep?.invoke() }, {}, {})
-            }
-            WidgetType.SHUTDOWN -> ActionButtonWidgetView(context).apply {
-                val cfg = config.copy(label = config.label ?: "Shutdown", action = "shutdown", useIcon = config.useIcon)
-                setup(cfg, onVibrate, { onShutdown?.invoke() }, {}, {})
-            }
+            null -> View(context)
         }
     }
 }

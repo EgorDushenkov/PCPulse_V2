@@ -38,7 +38,6 @@ data class ProcessData(val pid: Int, val name: String, val cpu: Double)
 data class MixerSession(val name: String, val volume: Int)
 
 enum class WidgetType {
-    @SerializedName("controls") CONTROLS,
     @SerializedName("audio_mixer") AUDIO_MIXER,
     @SerializedName("storage") STORAGE,
     @SerializedName("cooling") COOLING,
@@ -48,15 +47,11 @@ enum class WidgetType {
     @SerializedName("gpu") GPU,
     @SerializedName("network") NETWORK,
     @SerializedName("action_button") ACTION_BUTTON,
-    @SerializedName("media_player") MEDIA_PLAYER,
-    @SerializedName("screenshot") SCREENSHOT,
-    @SerializedName("mic_mute") MIC_MUTE,
-    @SerializedName("sleep") SLEEP,
-    @SerializedName("shutdown") SHUTDOWN
+    @SerializedName("media_player") MEDIA_PLAYER
 }
 
 data class WidgetConfig(
-    @SerializedName("type") val type: WidgetType,
+    @SerializedName("type") val type: WidgetType?,
     @SerializedName("x_position") var x: Int,
     @SerializedName("y_position") var y: Int,
     @SerializedName("width_span") var width: Int,

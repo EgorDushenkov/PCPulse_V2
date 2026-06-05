@@ -73,10 +73,17 @@ class PCForegroundService : Service() {
                 val action = intent.getStringExtra("ACTION")
                 if (ip != null && cmd != null) {
                     val socket = connections[ip]
-                    if (action != null) {
-                        socket?.sendCommand(cmd, mapOf("action" to action))
-                    } else {
-                        socket?.sendCommand(cmd)
+                    when (cmd) {
+                        "media" -> {
+                            if (action != null) socket?.sendCommand("media_command", mapOf("cmd" to action))
+                        }
+                        "run" -> {
+                            if (action != null) socket?.sendCommand("run", mapOf("path" to action))
+                        }
+                        else -> {
+                            // Single word commands like "screenshot", "shutdown", etc.
+                            socket?.sendCommand(cmd)
+                        }
                     }
                 }
             }

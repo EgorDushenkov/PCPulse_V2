@@ -31,20 +31,6 @@ class WidgetClickReceiver : BroadcastReceiver() {
                     sendToService(context, ip, "run", action)
                 }
             }
-            WidgetType.CONTROLS.name, 
-            WidgetType.SCREENSHOT.name,
-            WidgetType.MIC_MUTE.name,
-            WidgetType.SLEEP.name,
-            WidgetType.SHUTDOWN.name -> {
-                val cmd = when (action) {
-                    "screenshot" -> "screenshot"
-                    "mic_mute" -> "mute_mic"
-                    "sleep" -> "sleep"
-                    "shutdown" -> "shutdown"
-                    else -> action
-                }
-                if (cmd != null) sendToService(context, ip, cmd)
-            }
             WidgetType.MEDIA_PLAYER.name -> {
                 if (action != null) {
                     sendToService(context, ip, "media", action)
