@@ -7,6 +7,7 @@
     <color name="card_bg">#1E1E1E</color>
 
     <color name="text_white">#E0E0E0</color>
+    <color name="text_white_secondary">#B0B0B0</color>
     <color name="text_gray">#A0A0A0</color>
 
     <!-- Основная палитра -->

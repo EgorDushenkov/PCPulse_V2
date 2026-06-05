@@ -2,9 +2,12 @@ package com.example.pc
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -33,22 +36,25 @@ class MainActivity : BaseActivity() {
     private lateinit var devicesRecyclerView: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
     private lateinit var fabSettings: FloatingActionButton
+    private lateinit var fabWidgets: FloatingActionButton
 
     private lateinit var deviceAdapter: DeviceAdapter
     private val devices = mutableListOf<Device>()
-    private var currentDeviceIndex = 0
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(2, TimeUnit.SECONDS)
-        .build()
-
-    private val runnable = object : Runnable {
-        override fun run() {
-            if (devices.isNotEmpty()) {
-                fetchStatsForDevice(currentDeviceIndex)
-                currentDeviceIndex = (currentDeviceIndex + 1) % devices.size
+    private val statsReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == PCForegroundService.ACTION_STATS_UPDATE) {
+                val ip = intent.getStringExtra("DEVICE_IP") ?: return
+                val isOnline = intent.getBooleanExtra("IS_ONLINE", false)
+                val statsJson = intent.getStringExtra("STATS_JSON")
+                
+                if (statsJson != null) {
+                    val stats = gson.fromJson(statsJson, PCStats::class.java)
+                    updateDeviceStats(ip, stats)
+                } else {
+                    updateDeviceStatusOnly(ip, isOnline)
+                }
             }
-            handler.postDelayed(this, 5000) // Реже проверяем в списке
         }
     }
 
@@ -59,9 +65,24 @@ class MainActivity : BaseActivity() {
         devicesRecyclerView = findViewById(R.id.devicesRecyclerView)
         fabAdd = findViewById(R.id.fab_add)
         fabSettings = findViewById(R.id.fab_settings)
+        fabWidgets = findViewById(R.id.fab_widgets)
 
         setupRecyclerView()
         loadDevices()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+        }
+
+        val filter = IntentFilter(PCForegroundService.ACTION_STATS_UPDATE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(statsReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(statsReceiver, filter)
+        }
+
+        PCForegroundService.startService(this)
+        PCForegroundService.refresh(this)
 
         fabAdd.setOnClickListener {
             vibrate()
@@ -74,7 +95,41 @@ class MainActivity : BaseActivity() {
             startActivity(intent)
         }
 
-        handler.post(runnable)
+        fabWidgets.setOnClickListener {
+            vibrate()
+            val intent = Intent(this, WidgetDesignerActivity::class.java)
+            startActivity(intent)
+        }
+    }
+
+    private fun updateDeviceStats(ip: String, stats: PCStats) {
+        val index = devices.indexOfFirst { it.ipAddress == ip }
+        if (index != -1) {
+            val device = devices[index]
+            device.isOnline = true
+            device.pcName = stats.pc_name
+            device.status = "Online | ${stats.time}"
+            device.quickStats = "CPU: ${stats.cpu.usage.toInt()}% | GPU: ${stats.gpu.getOrNull(0)?.load ?: 0}%"
+            runOnUiThread {
+                deviceAdapter.notifyItemChanged(index)
+            }
+        }
+    }
+
+    private fun updateDeviceStatusOnly(ip: String, isOnline: Boolean) {
+        val index = devices.indexOfFirst { it.ipAddress == ip }
+        if (index != -1) {
+            val device = devices[index]
+            device.isOnline = isOnline
+            if (!isOnline) {
+                device.status = "Offline"
+                device.pcName = "Загрузка..."
+                device.quickStats = "CPU: --% | GPU: --%"
+            }
+            runOnUiThread {
+                deviceAdapter.notifyItemChanged(index)
+            }
+        }
     }
 
     private fun setupRecyclerView() {
@@ -136,41 +191,10 @@ class MainActivity : BaseActivity() {
             .show()
     }
 
-    private fun fetchStatsForDevice(index: Int) {
-        val device = devices[index]
-        val wsUrl = "ws://${device.ipAddress}:5000/ws"
-        val request = Request.Builder().url(wsUrl).build()
-        
-        okHttpClient.newWebSocket(request, object : WebSocketListener() {
-            override fun onMessage(webSocket: WebSocket, text: String) {
-                try {
-                    val stats = gson.fromJson(text, PCStats::class.java)
-                    runOnUiThread {
-                        device.isOnline = true
-                        device.pcName = stats.pc_name
-                        device.status = "Online | ${stats.time}"
-                        device.quickStats = "CPU: ${stats.cpu.usage.toInt()}% | GPU: ${stats.gpu.getOrNull(0)?.load ?: 0}%"
-                        deviceAdapter.notifyItemChanged(index)
-                    }
-                } catch (e: Exception) {
-                    Log.e("WS_Check", "Error parsing stats", e)
-                }
-                webSocket.close(1000, "Status check done")
-            }
-
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                runOnUiThread {
-                    device.isOnline = false
-                    device.status = "Offline"
-                    deviceAdapter.notifyItemChanged(index)
-                }
-            }
-        })
-    }
-
     private fun saveDevices() {
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         prefs.edit().putStringSet("DEVICE_IPS", devices.map { it.ipAddress }.toSet()).apply()
+        PCForegroundService.startService(this)
     }
 
     private fun loadDevices() {
@@ -183,7 +207,11 @@ class MainActivity : BaseActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        handler.removeCallbacks(runnable)
+        try {
+            unregisterReceiver(statsReceiver)
+        } catch (e: Exception) {
+            // Receiver might not be registered
+        }
     }
 }
 

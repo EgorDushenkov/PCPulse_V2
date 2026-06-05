@@ -143,15 +143,13 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
             
             val action = cfg.action ?: ""
             val iconUrl = if (action.startsWith("http://") || action.startsWith("https://")) {
-                // Если это ссылка, берем иконку через Google Favicons
                 val host = Uri.parse(action).host ?: action
                 "https://www.google.com/s2/favicons?domain=$host&sz=128"
             } else {
-                // Если это файл, берем иконку с нашего сервера
                 val prefs = context.getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
-                val serverIp = prefs.getString("SERVER_IP", "192.168.1.100") ?: "192.168.1.100"
+                val deviceIp = cfg.deviceIp ?: prefs.getString("SERVER_IP", "192.168.1.100") ?: "192.168.1.100"
                 val encodedPath = Uri.encode(action)
-                "http://$serverIp:5000/icon?path=$encodedPath"
+                "http://$deviceIp:5000/icon?path=$encodedPath"
             }
             
             Log.d("ActionButton", "Loading icon: $iconUrl")

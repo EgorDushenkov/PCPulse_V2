@@ -53,18 +53,21 @@ enum class WidgetType {
 
 data class WidgetConfig(
     @SerializedName("type") val type: WidgetType,
-    @SerializedName("x_position") val x: Int,
-    @SerializedName("y_position") val y: Int,
-    @SerializedName("width_span") val width: Int,
-    @SerializedName("height_span") val height: Int,
-    @SerializedName("label") val label: String? = null,
-    @SerializedName("action") val action: String? = null,
-    @SerializedName("use_icon") val useIcon: Boolean = false
+    @SerializedName("x_position") var x: Int,
+    @SerializedName("y_position") var y: Int,
+    @SerializedName("width_span") var width: Int,
+    @SerializedName("height_span") var height: Int,
+    @SerializedName("label") var label: String? = null,
+    @SerializedName("action") var action: String? = null,
+    @SerializedName("use_icon") var useIcon: Boolean = false,
+    @SerializedName("device_ip") var deviceIp: String? = null
 )
 
 data class DashboardLayout(
     @SerializedName("dashboard_name") val name: String,
-    @SerializedName("widgets") val widgets: List<WidgetConfig>
+    @SerializedName("widgets") val widgets: List<WidgetConfig>,
+    @SerializedName("grid_width") val gridWidth: Int = 4,
+    @SerializedName("grid_height") val gridHeight: Int = 8
 )
 
 interface UpdatableWidget {

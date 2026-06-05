@@ -1,3 +1,20 @@
 <resources>
-    <string name="app_name">PC</string>
+    <string name="app_name">PC Pulse</string>
+    <string name="add_element">Добавить элемент</string>
+    <string name="save_widget">Сохранить виджет</string>
+    <string name="select_device">Выберите устройство</string>
+    <string name="widget_designer">Конструктор виджетов</string>
+    <string name="place_widget_hint">Разместите виджет на экране</string>
+    <string name="error_no_ip">IP не задан</string>
+    <string name="cpu_label">ЦП</string>
+    <string name="gpu_label">ГП</string>
+    <string name="ram_label">ОЗУ</string>
+    <string name="storage_label">Диски</string>
+    <string name="network_label">Сеть</string>
+    <string name="controls_label">Управление</string>
+    <string name="audio_mixer_label">Микшер</string>
+    <string name="cooling_label">Охлаждение</string>
+    <string name="top_processes_label">Топ процессов</string>
+    <string name="action_button_label">Кнопка действия</string>
+    <string name="media_player_label">Плеер</string>
 </resources>

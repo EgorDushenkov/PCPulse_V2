@@ -51,6 +51,7 @@ class CustomDashboardActivity : BaseActivity() {
     private val layoutKey = "dashboardLayout"
 
     private var currentStats: PCStats? = null
+    private var deviceIp: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +59,7 @@ class CustomDashboardActivity : BaseActivity() {
 
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         
+        deviceIp = intent.getStringExtra("DEVICE_IP") ?: ""
         hideSystemUI()
 
         dashboardCanvas = findViewById(R.id.dashboard_canvas)

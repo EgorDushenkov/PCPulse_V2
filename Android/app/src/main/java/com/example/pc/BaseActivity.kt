@@ -43,7 +43,7 @@ abstract class BaseActivity : AppCompatActivity() {
 
             currentApi = RetrofitClient.getClient(ip)
             
-            webSocketManager = WebSocketManager(gson) { stats ->
+            webSocketManager = WebSocketManager(gson, null) { stats ->
                 onStatsUpdated(stats)
             }
             webSocketManager?.connect("ws://$ip:5000/ws")

@@ -7,7 +7,11 @@ import com.google.gson.Gson
 import okhttp3.*
 import java.util.concurrent.TimeUnit
 
-class WebSocketManager(private val gson: Gson, private val onStatsReceived: (PCStats) -> Unit) {
+class WebSocketManager(
+    private val gson: Gson, 
+    private val onStatusChanged: ((Boolean) -> Unit)? = null,
+    private val onStatsReceived: (PCStats) -> Unit
+) {
 
     private var client: OkHttpClient = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -27,6 +31,7 @@ class WebSocketManager(private val gson: Gson, private val onStatsReceived: (PCS
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 isConnected = true
                 Log.d("WebSocket", "Connected to $url")
+                onStatusChanged?.invoke(true)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -42,17 +47,20 @@ class WebSocketManager(private val gson: Gson, private val onStatsReceived: (PCS
                 webSocket.close(1000, null)
                 isConnected = false
                 Log.d("WebSocket", "Closing: $code / $reason")
+                onStatusChanged?.invoke(false)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 isConnected = false
                 Log.e("WebSocket", "Failure: ${t.message}")
+                onStatusChanged?.invoke(false)
                 scheduleReconnect()
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 isConnected = false
                 Log.d("WebSocket", "Closed: $code / $reason")
+                onStatusChanged?.invoke(false)
             }
         })
     }

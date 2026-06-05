@@ -96,6 +96,7 @@ class DashboardActivity : BaseActivity() {
     }
 
     private fun updateUI(s: PCStats) {
+        val ip = intent.getStringExtra("DEVICE_IP") ?: ""
         uptimeText.text = "Uptime: ${s.uptime} h"
         cpuSpeedometer.setValue(s.cpu.usage.toFloat())
         cpuNameText.text = s.cpu.name.replace("AMD ", "").replace("Intel(R) Core(TM) ", "").replace("Ryzen ", "R ").trim()
@@ -112,7 +113,7 @@ class DashboardActivity : BaseActivity() {
 
         updateDynamicWidget(WidgetType.CONTROLS) { 
             WidgetFactory.create(
-                config = WidgetConfig(WidgetType.CONTROLS, 0, 0, 1, 1), 
+                config = WidgetConfig(WidgetType.CONTROLS, 0, 0, 1, 1, deviceIp = ip), 
                 context = this, 
                 onVibrate = { vibrate() },
                 onScreenshot = ::showScreenshotDialog, 
@@ -123,17 +124,17 @@ class DashboardActivity : BaseActivity() {
         }
         updateDynamicWidget(WidgetType.AUDIO_MIXER) { 
             WidgetFactory.create(
-                config = WidgetConfig(WidgetType.AUDIO_MIXER, 0, 0, 1, 1), 
+                config = WidgetConfig(WidgetType.AUDIO_MIXER, 0, 0, 1, 1, deviceIp = ip), 
                 context = this, 
                 onVibrate = { vibrate() },
                 onVolumeChange = ::sendMixerVolume
             ) 
         }
-        updateDynamicWidget(WidgetType.STORAGE) { WidgetFactory.create(WidgetConfig(WidgetType.STORAGE, 0, 0, 1, 1), this) }
-        updateDynamicWidget(WidgetType.COOLING) { WidgetFactory.create(WidgetConfig(WidgetType.COOLING, 0, 0, 1, 1), this) }
+        updateDynamicWidget(WidgetType.STORAGE) { WidgetFactory.create(WidgetConfig(WidgetType.STORAGE, 0, 0, 1, 1, deviceIp = ip), this) }
+        updateDynamicWidget(WidgetType.COOLING) { WidgetFactory.create(WidgetConfig(WidgetType.COOLING, 0, 0, 1, 1, deviceIp = ip), this) }
         updateDynamicWidget(WidgetType.TOP_PROCESSES) { 
             WidgetFactory.create(
-                config = WidgetConfig(WidgetType.TOP_PROCESSES, 0, 0, 1, 1), 
+                config = WidgetConfig(WidgetType.TOP_PROCESSES, 0, 0, 1, 1, deviceIp = ip),
                 context = this, 
                 onVibrate = { vibrate() },
                 onKill = { pid -> killProcess(pid) }
