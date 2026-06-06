@@ -18,6 +18,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.cardview.widget.CardView
@@ -197,23 +198,56 @@ class CustomDashboardActivity : BaseActivity() {
             vibrate()
             val type = types[which]
             if (type == WidgetType.ACTION_BUTTON) {
-                showActionButtonConfigDialog { label, path, useIcon ->
-                    val new = WidgetConfig(type, 0, 0, 2, 2, label, path, useIcon)
+                showActionButtonConfigDialog { label, path, useIcon, theme ->
+                    val new = WidgetConfig(type, 0, 0, 2, 2, label, path, useIcon, theme = theme)
                     testLayout = testLayout.copy(widgets = testLayout.widgets + new)
                     displayDashboard(testLayout)
                 }
             } else {
-                val new = when(type) {
-                    WidgetType.MEDIA_PLAYER -> WidgetConfig(type, 0, 0, 4, 2)
-                    else -> WidgetConfig(type, 0, 0, 3, 2)
+                showWidgetConfigDialog(type) { config ->
+                    testLayout = testLayout.copy(widgets = testLayout.widgets + config)
+                    displayDashboard(testLayout)
                 }
-                testLayout = testLayout.copy(widgets = testLayout.widgets + new)
-                displayDashboard(testLayout)
             }
         }.setNegativeButton("Отмена", null).show()
     }
 
-    private fun showActionButtonConfigDialog(onSave: (String, String, Boolean) -> Unit) {
+    private fun showWidgetConfigDialog(type: WidgetType, onSave: (WidgetConfig) -> Unit) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 32)
+        }
+        
+        val themeLabel = TextView(this).apply { 
+            text = "Тема виджета:"
+            setPadding(0, 0, 0, 16)
+        }
+        val themeOptions = arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        val themeSpinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(this@CustomDashboardActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
+        }
+        
+        layout.addView(themeLabel)
+        layout.addView(themeSpinner)
+
+        AlertDialog.Builder(this)
+            .setTitle("Настройка виджета")
+            .setView(layout)
+            .setPositiveButton("Добавить") { _, _ ->
+                vibrate()
+                val selectedTheme = if (themeSpinner.selectedItem.toString() == "DEFAULT") null else themeSpinner.selectedItem.toString()
+                val config = when(type) {
+                    WidgetType.MEDIA_PLAYER -> WidgetConfig(type, 0, 0, 4, 2, theme = selectedTheme)
+                    WidgetType.CONTROLS -> WidgetConfig(type, 0, 0, 2, 2, theme = selectedTheme)
+                    else -> WidgetConfig(type, 0, 0, 3, 2, theme = selectedTheme)
+                }
+                onSave(config)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun showActionButtonConfigDialog(onSave: (String, String, Boolean, String?) -> Unit) {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 32)
@@ -222,19 +256,28 @@ class CustomDashboardActivity : BaseActivity() {
         val editPath = EditText(this).apply { hint = "Путь к файлу или URL" }
         val checkUseIcon = CheckBox(this).apply { 
             text = "Иконка вместо названия"
-            setPadding(0, 24, 0, 0)
+            setPadding(0, 24, 0, 24)
+        }
+        
+        val themeLabel = TextView(this).apply { text = "Тема кнопки:" }
+        val themeOptions = arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        val themeSpinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(this@CustomDashboardActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
         }
         
         layout.addView(editLabel)
         layout.addView(editPath)
         layout.addView(checkUseIcon)
+        layout.addView(themeLabel)
+        layout.addView(themeSpinner)
 
         AlertDialog.Builder(this)
             .setTitle("Настройка кнопки")
             .setView(layout)
             .setPositiveButton("Добавить") { _, _ ->
                 vibrate()
-                onSave(editLabel.text.toString(), editPath.text.toString(), checkUseIcon.isChecked)
+                val selectedTheme = if (themeSpinner.selectedItem.toString() == "DEFAULT") null else themeSpinner.selectedItem.toString()
+                onSave(editLabel.text.toString(), editPath.text.toString(), checkUseIcon.isChecked, selectedTheme)
             }
             .setNegativeButton("Отмена", null)
             .show()

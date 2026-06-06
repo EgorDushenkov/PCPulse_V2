@@ -31,8 +31,20 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 
 fun Context.getThemeColor(attr: Int): Int {
     val typedValue = TypedValue()
-    theme.resolveAttribute(attr, typedValue, true)
-    return typedValue.data
+    if (theme.resolveAttribute(attr, typedValue, true)) {
+        return typedValue.data
+    }
+    return Color.parseColor("#BB86FC")
+}
+
+fun Context.getWidgetColor(themeName: String?): Int {
+    return when (themeName) {
+        "TURQUOISE" -> ContextCompat.getColor(this, R.color.turquoise)
+        "ORANGE" -> ContextCompat.getColor(this, R.color.neon_orange)
+        "GREEN" -> ContextCompat.getColor(this, R.color.matrix_green)
+        "PURPLE" -> ContextCompat.getColor(this, R.color.purple)
+        else -> getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+    }
 }
 
 fun Context.findActivity(): Activity? {
@@ -198,7 +210,7 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
         super.onDraw(canvas)
         if (appState == 0) return
 
-        borderPaint.color = context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+        borderPaint.color = context.getWidgetColor(config?.theme)
         val margin = borderPaint.strokeWidth / 2f
         rectF.set(margin, margin, width.toFloat() - margin, height.toFloat() - margin)
         val r = (radius - margin).coerceAtLeast(0f)
@@ -248,9 +260,16 @@ class ControlsWidgetView(context: Context) : BaseWidgetView(context) {
         btnShutdown.setOnClickListener { onVibrate(); onShutdown() }
     }
 
+    private var currentConfig: WidgetConfig? = null
+
+    override fun updateConfig(config: WidgetConfig) {
+        this.currentConfig = config
+        updateMicUI(isMuted)
+    }
+
     private fun updateMicUI(muted: Boolean) {
-        val themeColor = context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
-        btnMic.setColorFilter(if (muted) Color.BLACK else themeColor)
+        val color = context.getWidgetColor(currentConfig?.theme)
+        btnMic.setColorFilter(if (muted) Color.BLACK else color)
     }
 
     override fun updateData(stats: PCStats) {
@@ -427,15 +446,25 @@ class AudioMixerWidgetView(context: Context) : BaseWidgetView(context) {
         this.onVolumeChange = onVolumeChange 
     }
 
+    private var currentConfig: WidgetConfig? = null
+    override fun updateConfig(config: WidgetConfig) {
+        this.currentConfig = config
+        val color = context.getWidgetColor(config.theme)
+        titleText.setTextColor(color)
+        // Redraw container to apply color to seekbars
+        invalidate() 
+    }
+
     @SuppressLint("SetTextI18n")
     override fun updateData(stats: PCStats) {
         titleText.text = Localization.get(context, "AUDIO_MIXER")
+        val color = context.getWidgetColor(currentConfig?.theme)
+        titleText.setTextColor(color)
         val current = stats.audio_sessions.map { it.name }.toSet()
         val existing = (0 until container.childCount).map { container.getChildAt(it).tag as String }.toSet()
 
         if (current != existing) {
             container.removeAllViews()
-            val themeColor = context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
             stats.audio_sessions.forEach { session ->
                 val view = LayoutInflater.from(context).inflate(R.layout.item_mixer_app, container, false)
                 view.tag = session.name
@@ -447,8 +476,8 @@ class AudioMixerWidgetView(context: Context) : BaseWidgetView(context) {
                 slider.progress = volToShow
                 text.text = "$volToShow%"
                 
-                slider.progressTintList = android.content.res.ColorStateList.valueOf(themeColor)
-                slider.thumbTintList = android.content.res.ColorStateList.valueOf(themeColor)
+                slider.progressTintList = android.content.res.ColorStateList.valueOf(color)
+                slider.thumbTintList = android.content.res.ColorStateList.valueOf(color)
                 slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) { 
                         if (f) {
@@ -516,11 +545,20 @@ class StorageWidgetView(context: Context) : BaseWidgetView(context) {
         root.addView(scroll)
         addView(root)
     }
+
+    private var currentConfig: WidgetConfig? = null
+    override fun updateConfig(config: WidgetConfig) {
+        this.currentConfig = config
+        val color = context.getWidgetColor(config.theme)
+        titleText.setTextColor(color)
+    }
+
     @SuppressLint("SetTextI18n")
     override fun updateData(stats: PCStats) {
         titleText.text = Localization.get(context, "STORAGE")
+        val color = context.getWidgetColor(currentConfig?.theme)
+        titleText.setTextColor(color)
         container.removeAllViews()
-        val themeColor = context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
         stats.disks.forEach { disk ->
             val v = LayoutInflater.from(context).inflate(R.layout.item_widget_disk, container, false)
             v.findViewById<TextView>(R.id.disk_name).text = disk.dev.replace("\\", "")
@@ -528,7 +566,7 @@ class StorageWidgetView(context: Context) : BaseWidgetView(context) {
             v.findViewById<TextView>(R.id.disk_value).text = "${usedValue.toInt()} / ${disk.total.toInt()} GB"
             val pb = v.findViewById<ProgressBar>(R.id.disk_progress)
             pb.progress = disk.percent.toInt()
-            pb.progressTintList = android.content.res.ColorStateList.valueOf(themeColor)
+            pb.progressTintList = android.content.res.ColorStateList.valueOf(color)
             container.addView(v)
         }
     }
@@ -549,8 +587,18 @@ class CoolingWidgetView(context: Context) : BaseWidgetView(context) {
         c.addView(fansText)
         addView(c)
     }
+
+    private var currentConfig: WidgetConfig? = null
+    override fun updateConfig(config: WidgetConfig) {
+        this.currentConfig = config
+        val color = context.getWidgetColor(config.theme)
+        titleText.setTextColor(color)
+    }
+
     override fun updateData(stats: PCStats) {
         titleText.text = Localization.get(context, "COOLING")
+        val color = context.getWidgetColor(currentConfig?.theme)
+        titleText.setTextColor(color)
         val info = stats.fans.joinToString("\n") { "${it.name}: ${it.rpm} RPM" }
         fansText.text = info.ifEmpty { Localization.get(context, "NO_FANS") }
     }
@@ -572,12 +620,22 @@ class TopProcessesWidgetView(context: Context) : BaseWidgetView(context) {
         container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         c.addView(container); addView(c)
     }
+
+    private var currentConfig: WidgetConfig? = null
+    override fun updateConfig(config: WidgetConfig) {
+        this.currentConfig = config
+        val color = context.getWidgetColor(config.theme)
+        titleText.setTextColor(color)
+    }
+
     fun setCallbacks(onVibrate: () -> Unit, onKill: (Int) -> Unit) { 
         this.onVibrate = onVibrate
-        this.onKill = onKill 
+        this.onKill = onKill
     }
     override fun updateData(stats: PCStats) {
         titleText.text = Localization.get(context, "PROCESSES")
+        val color = context.getWidgetColor(currentConfig?.theme)
+        titleText.setTextColor(color)
         container.removeAllViews()
         stats.procs.take(5).forEach { proc ->
             val row = LinearLayout(context).apply {
@@ -651,13 +709,16 @@ abstract class SpeedometerWidgetView(context: Context) : BaseWidgetView(context)
     override fun updateConfig(config: WidgetConfig) {
         this.currentConfig = config
         applyLayoutRules()
+        val color = context.getWidgetColor(config.theme)
+        labelText.setTextColor(color)
+        speedometer.setMainColor(color)
     }
 
     private fun applyLayoutRules() {
         val config = currentConfig ?: return
         val isHorizontal = config.width > 2
-        val showLabel = if (isHorizontal) config.height > 1 else config.height >= 3
-        labelText.visibility = if (showLabel) View.VISIBLE else View.GONE
+        // Always show label as requested by user
+        labelText.visibility = View.VISIBLE
         (labelText.parent as? ViewGroup)?.removeView(labelText)
         (speedometer.parent as? ViewGroup)?.removeView(speedometer)
         (detailText.parent as? ViewGroup)?.removeView(detailText)
@@ -732,12 +793,13 @@ class NetworkWidgetView(context: Context) : BaseWidgetView(context) {
     private val downText: TextView
     private val upText: TextView
     private val titleText: TextView
+    private var currentConfig: WidgetConfig? = null
+
     init {
         val l = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
-        val themeColor = context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
         titleText = TextView(context).apply {
             text = Localization.get(context, "NETWORK")
-            setTextColor(themeColor)
+            setTextColor(context.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
             textSize = 12f; paint.isFakeBoldText = true
         }
         l.addView(titleText)
@@ -745,9 +807,18 @@ class NetworkWidgetView(context: Context) : BaseWidgetView(context) {
         upText = TextView(context).apply { setTextColor(Color.LTGRAY); textSize = 12f }
         l.addView(downText); l.addView(upText); addView(l)
     }
+
+    override fun updateConfig(config: WidgetConfig) {
+        this.currentConfig = config
+        val color = context.getWidgetColor(config.theme)
+        titleText.setTextColor(color)
+    }
+
     @SuppressLint("SetTextI18n")
     override fun updateData(stats: PCStats) {
         titleText.text = Localization.get(context, "NETWORK")
+        val color = context.getWidgetColor(currentConfig?.theme)
+        titleText.setTextColor(color)
         downText.text = "↓ ${stats.network.down_kbps.toInt()} KB/s"
         upText.text = "↑ ${stats.network.up_kbps.toInt()} KB/s"
     }
@@ -770,24 +841,38 @@ object WidgetFactory {
         onCloseCommand: ((String) -> Unit)? = null
     ): View {
         return when (config.type) {
-            WidgetType.AUDIO_MIXER -> AudioMixerWidgetView(context).apply {
-                setCallbacks(onVibrate, onVolumeChange ?: { _, _ -> })
-            }
-            WidgetType.STORAGE -> StorageWidgetView(context)
-            WidgetType.COOLING -> CoolingWidgetView(context)
+            WidgetType.COOLING -> CoolingWidgetView(context).apply { updateConfig(config) }
             WidgetType.TOP_PROCESSES -> TopProcessesWidgetView(context).apply {
                 setCallbacks(onVibrate, onKill ?: {})
+                updateConfig(config)
             }
             WidgetType.CPU -> CpuWidgetView(context).apply { updateConfig(config) }
             WidgetType.RAM -> RamWidgetView(context).apply { updateConfig(config) }
             WidgetType.GPU -> GpuWidgetView(context).apply { updateConfig(config) }
-            WidgetType.NETWORK -> NetworkWidgetView(context)
+            WidgetType.NETWORK -> NetworkWidgetView(context).apply { updateConfig(config) }
             WidgetType.ACTION_BUTTON -> ActionButtonWidgetView(context).apply {
                 setup(config, onVibrate, onRunCommand ?: {}, onMinimizeCommand ?: {}, onCloseCommand ?: {})
+                updateConfig(config)
             }
             WidgetType.MEDIA_PLAYER -> MediaPlayerWidgetView(context).apply {
                 setCallbacks(onVibrate, onMediaCommand ?: {})
+                updateConfig(config)
             }
+            WidgetType.AUDIO_MIXER -> AudioMixerWidgetView(context).apply {
+                setCallbacks(onVibrate, onVolumeChange ?: { _, _ -> })
+                updateConfig(config)
+            }
+            WidgetType.CONTROLS -> ControlsWidgetView(context).apply {
+                setCallbacks(
+                    onVibrate = onVibrate,
+                    onScreenshot = onScreenshot ?: {},
+                    onMicMute = onMicMute ?: {},
+                    onSleep = onSleep ?: {},
+                    onShutdown = onShutdown ?: {}
+                )
+                updateConfig(config)
+            }
+            WidgetType.STORAGE -> StorageWidgetView(context).apply { updateConfig(config) }
             null -> View(context)
         }
     }

@@ -279,22 +279,32 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun showWidgetSettingsDialog(config: WidgetConfig) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_widget_settings, null)
-        val etLabel = dialogView.findViewById<EditText>(R.id.etLabel)
-        val etAction = dialogView.findViewById<EditText>(R.id.etAction)
-        val cbUseIcon = dialogView.findViewById<CheckBox>(R.id.cbUseIcon)
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 32)
+        }
 
-        etLabel.setText(config.label)
-        etAction.setText(config.action)
-        cbUseIcon.isChecked = config.useIcon
+        val themeLabel = TextView(this).apply {
+            text = "Тема элемента:"
+            setPadding(0, 0, 0, 16)
+        }
+        val themeOptions = arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        val themeSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@WidgetDesignerActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
+            val currentTheme = config.theme ?: "DEFAULT"
+            val index = themeOptions.indexOf(currentTheme).coerceAtLeast(0)
+            setSelection(index)
+        }
+
+        layout.addView(themeLabel)
+        layout.addView(themeSpinner)
 
         AlertDialog.Builder(this)
             .setTitle("Настройка элемента")
-            .setView(dialogView)
+            .setView(layout)
             .setPositiveButton("OK") { _, _ ->
-                config.label = etLabel.text.toString()
-                config.action = etAction.text.toString()
-                config.useIcon = cbUseIcon.isChecked
+                val selectedTheme = themeSpinner.selectedItem.toString()
+                config.theme = if (selectedTheme == "DEFAULT") null else selectedTheme
                 refreshWidgets()
             }
             .setNegativeButton("Отмена", null)
@@ -406,14 +416,18 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun showAddWidgetDialog() {
-        val types = WidgetType.entries.toTypedArray()
-        AlertDialog.Builder(this).setItems(types.map { it.name }.toTypedArray()) { _, i ->
-            val type = types[i]
-            val newConfig = WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
-            currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
-            refreshWidgets()
-            showWidgetSettingsDialog(newConfig)
-        }.show()
+        val excludedTypes = listOf(WidgetType.MEDIA_PLAYER, WidgetType.ACTION_BUTTON, WidgetType.CONTROLS)
+        val types = WidgetType.entries.filter { it !in excludedTypes }.toTypedArray()
+        
+        AlertDialog.Builder(this)
+            .setTitle("Добавить элемент")
+            .setItems(types.map { it.name }.toTypedArray()) { _, i ->
+                val type = types[i]
+                val newConfig = WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
+                currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
+                refreshWidgets()
+                showWidgetSettingsDialog(newConfig)
+            }.show()
     }
 
     private fun isControlButton(type: WidgetType): Boolean {

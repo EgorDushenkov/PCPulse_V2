@@ -47,7 +47,8 @@ enum class WidgetType {
     @SerializedName("gpu") GPU,
     @SerializedName("network") NETWORK,
     @SerializedName("action_button") ACTION_BUTTON,
-    @SerializedName("media_player") MEDIA_PLAYER
+    @SerializedName("media_player") MEDIA_PLAYER,
+    @SerializedName("controls") CONTROLS
 }
 
 data class WidgetConfig(
@@ -59,7 +60,8 @@ data class WidgetConfig(
     @SerializedName("label") var label: String? = null,
     @SerializedName("action") var action: String? = null,
     @SerializedName("use_icon") var useIcon: Boolean = false,
-    @SerializedName("device_ip") var deviceIp: String? = null
+    @SerializedName("device_ip") var deviceIp: String? = null,
+    @SerializedName("theme") var theme: String? = null
 )
 
 data class DashboardLayout(
@@ -87,6 +89,7 @@ object Localization {
             "COOLING" -> if (isRussian) "ОХЛАЖДЕНИЕ" else "COOLING"
             "NETWORK" -> if (isRussian) "СЕТЬ" else "NETWORK"
             "PROCESSES" -> if (isRussian) "ПРОЦЕССЫ" else "PROCESSES"
+            "CONTROLS" -> if (isRussian) "УПРАВЛЕНИЕ" else "CONTROLS"
             "AUDIO_MIXER" -> if (isRussian) "АУДИО МИКШЕР" else "AUDIO MIXER"
             "NO_FANS" -> if (isRussian) "Вентиляторы не найдены" else "No fans detected"
             "NO_MEDIA" -> if (isRussian) "Нет медиа" else "No Media"
