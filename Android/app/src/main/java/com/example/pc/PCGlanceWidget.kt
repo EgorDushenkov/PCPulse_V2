@@ -170,21 +170,33 @@ class PCGlanceWidget : GlanceAppWidget() {
                                             }
                                         }
                                     } else if (widget.type == WidgetType.MEDIA_PLAYER) {
+                                        val relRow = row - widget.y
                                         Column(modifier = GlanceModifier.fillMaxSize()) {
-                                            Spacer(modifier = GlanceModifier.defaultWeight())
-                                            Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
-                                                listOf("prev", "play_pause", "next").forEach { cmd ->
-                                                    Box(modifier = GlanceModifier.defaultWeight().fillMaxHeight().clickable(
-                                                        actionStartService(
-                                                            Intent(context, PCForegroundService::class.java).apply {
-                                                                action = PCForegroundService.ACTION_SEND_COMMAND
-                                                                putExtra("DEVICE_IP", deviceIp)
-                                                                putExtra("action_type", "media")
-                                                                putExtra("ACTION", cmd)
-                                                            }
-                                                        )
-                                                    )) {}
+                                            if (widget.height > 1 && relRow == 0) {
+                                                // В верхней строке высокого виджета (2х2, 4х2) кнопок нет
+                                                Spacer(modifier = GlanceModifier.fillMaxSize())
+                                            } else {
+                                                // Если виджет высокий, кнопки в верхней половине нижней ячейки
+                                                // Если виджет 1-строчный, кнопки в нижней половине
+                                                val buttonsAtTop = widget.height > 1
+                                                if (!buttonsAtTop) Spacer(modifier = GlanceModifier.defaultWeight())
+
+                                                Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
+                                                    listOf("prev", "play_pause", "next").forEach { cmd ->
+                                                        Box(modifier = GlanceModifier.defaultWeight().fillMaxHeight().clickable(
+                                                            actionStartService(
+                                                                Intent(context, PCForegroundService::class.java).apply {
+                                                                    action = PCForegroundService.ACTION_SEND_COMMAND
+                                                                    putExtra("DEVICE_IP", deviceIp)
+                                                                    putExtra("action_type", "media")
+                                                                    putExtra("ACTION", cmd)
+                                                                }
+                                                            )
+                                                        )) {}
+                                                    }
                                                 }
+
+                                                if (buttonsAtTop) Spacer(modifier = GlanceModifier.defaultWeight())
                                             }
                                         }
                                     } else if (!widget.action.isNullOrEmpty()) {
