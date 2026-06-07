@@ -1,5 +1,0 @@
-pcpulse\gui\TrayAndGUI.class
-pcpulse\worker\WorkerManager.class
-pcpulse\system\SystemMonitor.class
-pcpulse\network\WebServer.class
-pcpulse\ServerApp.class
