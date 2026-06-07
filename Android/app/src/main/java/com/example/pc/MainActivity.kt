@@ -95,6 +95,8 @@ class MainActivity : BaseActivity() {
     }
 
     private fun updateDeviceStats(ip: String, stats: PCStats) {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
         val index = devices.indexOfFirst { it.ipAddress == ip }
         if (index != -1) {
             val device = devices[index]
@@ -109,13 +111,15 @@ class MainActivity : BaseActivity() {
     }
 
     private fun updateDeviceStatusOnly(ip: String, isOnline: Boolean) {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
         val index = devices.indexOfFirst { it.ipAddress == ip }
         if (index != -1) {
             val device = devices[index]
             device.isOnline = isOnline
             if (!isOnline) {
                 device.status = "Offline"
-                device.pcName = "Загрузка..."
+                device.pcName = if (isRussian) "Загрузка..." else "Loading..."
                 device.quickStats = "CPU: --% | GPU: --%"
             }
             runOnUiThread {
@@ -133,7 +137,8 @@ class MainActivity : BaseActivity() {
                     intent.putExtra("DEVICE_IP", device.ipAddress)
                     startActivity(intent)
                 } else {
-                    Toast.makeText(this, "Устройство не в сети", Toast.LENGTH_SHORT).show()
+                    val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+                    Toast.makeText(this, if (isRussian) "Устройство не в сети" else "Device offline", Toast.LENGTH_SHORT).show()
                 }
             },
             onItemLongClick = { device ->
@@ -146,31 +151,36 @@ class MainActivity : BaseActivity() {
     }
 
     private fun showAddDeviceDialog() {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
+        
         val builder = AlertDialog.Builder(this)
-        builder.setTitle("Добавить устройство")
+        builder.setTitle(if (isRussian) "Добавить устройство" else "Add Device")
         val input = EditText(this)
-        input.hint = "Введите IP (например: 192.168.1.23)"
+        input.hint = if (isRussian) "Введите IP (например: 192.168.1.23)" else "Enter IP (e.g. 192.168.1.23)"
         input.setSingleLine()
         builder.setView(input)
-        builder.setPositiveButton("Сохранить") { _, _ ->
+        builder.setPositiveButton(if (isRussian) "Сохранить" else "Save") { _, _ ->
             vibrate()
             val ip = input.text.toString().trim()
             if (ip.isNotEmpty() && devices.none { it.ipAddress == ip }) {
-                val newDevice = Device(ip)
+                val newDevice = Device(ip, pcName = if (isRussian) "Загрузка..." else "Loading...")
                 devices.add(newDevice)
                 deviceAdapter.notifyItemInserted(devices.size - 1)
                 saveDevices()
             }
         }
-        builder.setNegativeButton("Отмена", null)
+        builder.setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
         builder.show()
     }
 
     private fun showDeleteDeviceDialog(device: Device) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        
         AlertDialog.Builder(this)
-            .setTitle("Удалить устройство?")
-            .setMessage("Вы уверены?")
-            .setPositiveButton("Удалить") { _, _ ->
+            .setTitle(if (isRussian) "Удалить устройство?" else "Delete device?")
+            .setMessage(if (isRussian) "Вы уверены?" else "Are you sure?")
+            .setPositiveButton(if (isRussian) "Удалить" else "Delete") { _, _ ->
                 vibrate()
                 val index = devices.indexOf(device)
                 if (index != -1) {
@@ -179,7 +189,7 @@ class MainActivity : BaseActivity() {
                     saveDevices()
                 }
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
             .show()
     }
 
@@ -191,9 +201,10 @@ class MainActivity : BaseActivity() {
 
     private fun loadDevices() {
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
         val ipSet = prefs.getStringSet("DEVICE_IPS", emptySet()) ?: emptySet()
         devices.clear()
-        ipSet.forEach { devices.add(Device(it)) }
+        ipSet.forEach { devices.add(Device(it, pcName = if (isRussian) "Загрузка..." else "Loading...")) }
         deviceAdapter.notifyDataSetChanged()
     }
 

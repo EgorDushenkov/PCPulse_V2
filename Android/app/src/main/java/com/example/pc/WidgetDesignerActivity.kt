@@ -220,6 +220,7 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun refreshWidgets() {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         canvas.removeAllViews()
         widgetViews.clear()
         resizeHandles.clear()
@@ -238,12 +239,12 @@ class WidgetDesignerActivity : BaseActivity() {
                 
                 val dh = createHandle(card, R.drawable.ic_delete, Color.parseColor("#EA4335")) { 
                     AlertDialog.Builder(this)
-                        .setTitle("Удалить элемент?")
-                        .setPositiveButton("Да") { _, _ ->
+                        .setTitle(if (isRussian) "Удалить элемент?" else "Delete element?")
+                        .setPositiveButton(if (isRussian) "Да" else "Yes") { _, _ ->
                             currentLayout = currentLayout.copy(widgets = currentLayout.widgets - config)
                             refreshWidgets()
                         }
-                        .setNegativeButton("Нет", null)
+                        .setNegativeButton(if (isRussian) "Нет" else "No", null)
                         .show()
                 }
                 canvas.addView(dh)
@@ -279,20 +280,25 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun showWidgetSettingsDialog(config: WidgetConfig) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 32)
         }
 
         val themeLabel = TextView(this).apply {
-            text = "Тема элемента:"
+            text = if (isRussian) "Тема элемента:" else "Element Theme:"
             setPadding(0, 0, 0, 16)
         }
-        val themeOptions = arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        val themeOptions = if (isRussian) {
+            arrayOf("ПО УМОЛЧАНИЮ", "ФИОЛЕТОВАЯ", "БИРЮЗОВАЯ", "ОРАНЖЕВАЯ", "ЗЕЛЕНАЯ")
+        } else {
+            arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        }
         val themeSpinner = Spinner(this).apply {
             adapter = ArrayAdapter(this@WidgetDesignerActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
             val currentTheme = config.theme ?: "DEFAULT"
-            val index = themeOptions.indexOf(currentTheme).coerceAtLeast(0)
+            val index = arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN").indexOf(currentTheme).coerceAtLeast(0)
             setSelection(index)
         }
 
@@ -300,14 +306,16 @@ class WidgetDesignerActivity : BaseActivity() {
         layout.addView(themeSpinner)
 
         AlertDialog.Builder(this)
-            .setTitle("Настройка элемента")
+            .setTitle(if (isRussian) "Настройка элемента" else "Element Settings")
             .setView(layout)
             .setPositiveButton("OK") { _, _ ->
-                val selectedTheme = themeSpinner.selectedItem.toString()
-                config.theme = if (selectedTheme == "DEFAULT") null else selectedTheme
+                val selectedIndex = themeSpinner.selectedItemPosition
+                config.theme = if (selectedIndex == 0) null else {
+                    arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")[selectedIndex]
+                }
                 refreshWidgets()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
             .show()
     }
 
@@ -416,18 +424,43 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun showAddWidgetDialog() {
-        val excludedTypes = listOf(WidgetType.MEDIA_PLAYER, WidgetType.ACTION_BUTTON, WidgetType.CONTROLS)
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        val excludedTypes = listOf(WidgetType.MEDIA_PLAYER, WidgetType.ACTION_BUTTON)
         val types = WidgetType.entries.filter { it !in excludedTypes }.toTypedArray()
         
+        val names = types.map { type ->
+            if (isRussian) {
+                when (type) {
+                    WidgetType.CPU -> "Процессор (CPU)"
+                    WidgetType.GPU -> "Видеокарта (GPU)"
+                    WidgetType.RAM -> "Оперативная память"
+                    WidgetType.STORAGE -> "Накопитель"
+                    WidgetType.NETWORK -> "Сеть"
+                    WidgetType.COOLING -> "Охлаждение"
+                    WidgetType.TOP_PROCESSES -> "Топ процессов"
+                    WidgetType.CONTROLS -> "Управление"
+                    else -> type.name
+                }
+            } else {
+                type.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
+            }
+        }.toTypedArray()
+
         AlertDialog.Builder(this)
-            .setTitle("Добавить элемент")
-            .setItems(types.map { it.name }.toTypedArray()) { _, i ->
+            .setTitle(if (isRussian) "Добавить элемент" else "Add Element")
+            .setItems(names) { _, i ->
                 val type = types[i]
-                val newConfig = WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
+                val newConfig = if (type == WidgetType.CONTROLS) {
+                    WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
+                } else {
+                    WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
+                }
                 currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
                 refreshWidgets()
                 showWidgetSettingsDialog(newConfig)
-            }.show()
+            }
+            .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
+            .show()
     }
 
     private fun isControlButton(type: WidgetType): Boolean {
@@ -435,8 +468,9 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun saveWidget() {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         if (selectedDevice.isEmpty()) {
-            Toast.makeText(this, "Выберите устройство", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (isRussian) "Выберите устройство" else "Select device", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -478,10 +512,10 @@ class WidgetDesignerActivity : BaseActivity() {
             )
 
             appWidgetManager.requestPinAppWidget(myProvider, bundle, successCallback)
-            Toast.makeText(this, "Разместите виджет на экране", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, if (isRussian) "Разместите виджет на экране" else "Place the widget on the screen", Toast.LENGTH_LONG).show()
             finish()
         } else {
-            Toast.makeText(this, "Используйте системное меню виджетов", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, if (isRussian) "Используйте системное меню виджетов" else "Use the system widgets menu", Toast.LENGTH_LONG).show()
         }
     }
 }

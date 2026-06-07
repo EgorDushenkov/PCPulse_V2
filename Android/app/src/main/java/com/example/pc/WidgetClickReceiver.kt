@@ -36,6 +36,19 @@ class WidgetClickReceiver : BroadcastReceiver() {
                     sendToService(context, ip, "media", action)
                 }
             }
+            WidgetType.CONTROLS.name -> {
+                when (action) {
+                    "set_mic_mute" -> {
+                        val statsJson = context.getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE).getString(ip, null)
+                        val stats = statsJson?.let { com.google.gson.Gson().fromJson(it, PCStats::class.java) }
+                        val currentMuted = stats?.mic_muted ?: false
+                        sendToService(context, ip, "set_mic_mute", if (currentMuted) "0" else "1")
+                    }
+                    "screenshot" -> sendToService(context, ip, "screenshot")
+                    "sleep" -> sendToService(context, ip, "sleep")
+                    "shutdown" -> sendToService(context, ip, "shutdown")
+                }
+            }
         }
     }
 

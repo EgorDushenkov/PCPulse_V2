@@ -1,5 +1,6 @@
 package com.example.pc
 
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -72,6 +73,10 @@ class DashboardActivity : BaseActivity() {
     }
 
     private fun initViews() {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        
+        findViewById<TextView>(R.id.dashTitle).text = if (isRussian) "Панель управления" else "Dashboard"
+        
         dashIpText = findViewById(R.id.dashIpText)
         uptimeText = findViewById(R.id.uptimeText)
         cpuSpeedometer = findViewById(R.id.cpuSpeedometer)
@@ -85,6 +90,7 @@ class DashboardActivity : BaseActivity() {
         netDownText = findViewById(R.id.netDownText)
         netUpText = findViewById(R.id.netUpText)
         openConstructorButton = findViewById(R.id.openConstructorButton)
+        openConstructorButton.text = if (isRussian) "Открыть Конструктор" else "Open Designer"
 
         containers = mapOf(
             WidgetType.AUDIO_MIXER to findViewById(R.id.mixerContainer),
@@ -95,8 +101,9 @@ class DashboardActivity : BaseActivity() {
     }
 
     private fun updateUI(s: PCStats) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val ip = intent.getStringExtra("DEVICE_IP") ?: ""
-        uptimeText.text = "Uptime: ${s.uptime} h"
+        uptimeText.text = "${if (isRussian) "Время работы" else "Uptime"}: ${s.uptime} h"
         cpuSpeedometer.setValue(s.cpu.usage.toFloat())
         cpuNameText.text = s.cpu.name.replace("AMD ", "").replace("Intel(R) Core(TM) ", "").replace("Ryzen ", "R ").trim()
         cpuDetailText.text = "${s.cpu.freq.toInt()} MHz | ${s.cpu.temp}°C"

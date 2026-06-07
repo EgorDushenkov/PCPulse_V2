@@ -80,6 +80,12 @@ class PCForegroundService : Service() {
                         "run" -> {
                             if (action != null) socket?.sendCommand("run", mapOf("path" to action))
                         }
+                        "set_mic_mute" -> {
+                            if (action != null) {
+                                val mute = action == "1"
+                                socket?.sendCommand("set_mic_mute", mapOf("mute" to if (mute) 1 else 0))
+                            }
+                        }
                         else -> {
                             // Single word commands like "screenshot", "shutdown", etc.
                             socket?.sendCommand(cmd)
@@ -174,12 +180,28 @@ class PCForegroundService : Service() {
     private fun updateNotification() {
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         val showMedia = prefs.getBoolean("MEDIA_NOTIF_ENABLED", true)
+        val defaultMediaIp = prefs.getString("DEFAULT_MEDIA_IP", null)
         
         val notificationManager = getSystemService(NotificationManager::class.java)
 
         if (showMedia) {
+            val playingDevices = deviceStats.filter { it.value.media != null }
+            val hasMultiplePlaying = playingDevices.size > 1
+            val defaultIsPlaying = defaultMediaIp != null && playingDevices.containsKey(defaultMediaIp)
+
             deviceStats.forEach { (ip, stats) ->
-                if (stats.media != null) {
+                val isPlaying = stats.media != null
+                val shouldShow = if (isPlaying) {
+                    if (hasMultiplePlaying && defaultIsPlaying) {
+                        ip == defaultMediaIp
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
+
+                if (shouldShow) {
                     val session = getOrCreateMediaSession(ip, stats)
                     val mediaNotif = createMediaNotification(ip, stats, session)
                     notificationManager.notify(ip.hashCode(), mediaNotif)

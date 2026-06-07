@@ -88,7 +88,8 @@ abstract class BaseActivity : AppCompatActivity() {
     }
 
     protected fun showScreenshotDialog() {
-        Toast.makeText(this, "Загрузка скриншота...", Toast.LENGTH_SHORT).show()
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        Toast.makeText(this, if (isRussian) "Загрузка скриншота..." else "Loading screenshot...", Toast.LENGTH_SHORT).show()
         currentApi?.getScreenshot()?.enqueue(object : Callback<ResponseBody> {
             override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                 if (response.isSuccessful) {
@@ -104,10 +105,10 @@ abstract class BaseActivity : AppCompatActivity() {
                                         val view = layoutInflater.inflate(R.layout.dialog_screenshot, null)
                                         view.findViewById<ImageView>(R.id.screenshotImage).setImageBitmap(bitmap)
                                         AlertDialog.Builder(this@BaseActivity)
-                                            .setTitle("PC Screenshot")
+                                            .setTitle(if (isRussian) "Скриншот ПК" else "PC Screenshot")
                                             .setView(view)
-                                            .setPositiveButton("Закрыть", null)
-                                            .setNeutralButton("Сохранить") { _, _ ->
+                                            .setPositiveButton(if (isRussian) "Закрыть" else "Close", null)
+                                            .setNeutralButton(if (isRussian) "Сохранить" else "Save") { _, _ ->
                                                 saveBitmapToGallery(bitmap)
                                             }
                                             .show()
@@ -125,6 +126,7 @@ abstract class BaseActivity : AppCompatActivity() {
     }
 
     private fun saveBitmapToGallery(bitmap: Bitmap) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val filename = "PC_Screenshot_${System.currentTimeMillis()}.jpg"
         var fos: OutputStream? = null
         try {
@@ -145,7 +147,7 @@ abstract class BaseActivity : AppCompatActivity() {
             }
             fos?.use {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
-                Toast.makeText(this, "Сохранено в галерею", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, if (isRussian) "Сохранено в галерею" else "Saved to gallery", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {}
     }
@@ -164,14 +166,26 @@ abstract class BaseActivity : AppCompatActivity() {
     }
 
     protected fun sendShutdownCommand() {
-        showPowerActionDialog("выключить", "Выключение") { webSocketManager?.sendCommand("shutdown") }
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        val action = if (isRussian) "выключить" else "shutdown"
+        val title = if (isRussian) "Выключение" else "Shutdown"
+        showPowerActionDialog(action, title) { webSocketManager?.sendCommand("shutdown") }
     }
 
     protected fun sendSleepCommand() {
-        showPowerActionDialog("отправить в спящий режим", "Сон") { webSocketManager?.sendCommand("sleep") }
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        val action = if (isRussian) "отправить в спящий режим" else "sleep"
+        val title = if (isRussian) "Сон" else "Sleep"
+        showPowerActionDialog(action, title) { webSocketManager?.sendCommand("sleep") }
     }
 
     private fun showPowerActionDialog(actionName: String, title: String, onConfirm: () -> Unit) {
-        AlertDialog.Builder(this).setTitle(title).setMessage("Вы уверены, что хотите $actionName ПК?").setPositiveButton("Да") { _, _ -> onConfirm() }.setNegativeButton("Нет", null).show()
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(if (isRussian) "Вы уверены, что хотите $actionName ПК?" else "Are you sure you want to $actionName the PC?")
+            .setPositiveButton(if (isRussian) "Да" else "Yes") { _, _ -> onConfirm() }
+            .setNegativeButton(if (isRussian) "Нет" else "No", null)
+            .show()
     }
 }

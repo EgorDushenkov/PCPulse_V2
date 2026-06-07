@@ -123,6 +123,12 @@ class PCAppWidgetProvider : AppWidgetProvider() {
                         clickConfigs.add(Triple("play_pause", 1, 3))
                         clickConfigs.add(Triple("next", 2, 3))
                     }
+                    WidgetType.CONTROLS -> {
+                        clickConfigs.add(Triple("screenshot", 0, 4))
+                        clickConfigs.add(Triple("set_mic_mute", 1, 4))
+                        clickConfigs.add(Triple("sleep", 2, 4))
+                        clickConfigs.add(Triple("shutdown", 3, 4))
+                    }
                     else -> {
                         clickConfigs.add(Triple(config.action, 0, 1))
                     }

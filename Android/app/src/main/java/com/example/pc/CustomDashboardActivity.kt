@@ -182,47 +182,84 @@ class CustomDashboardActivity : BaseActivity() {
     }
 
     private fun showDeleteDialog(widgetView: View) {
-        AlertDialog.Builder(this).setTitle("Удалить?").setMessage("Удалить виджет?").setPositiveButton("Да") { _, _ ->
-            vibrate()
-            widgetViews[widgetView]?.let { config ->
-                testLayout = testLayout.copy(widgets = testLayout.widgets - config)
-                displayDashboard(testLayout)
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        AlertDialog.Builder(this)
+            .setTitle(if (isRussian) "Удалить?" else "Delete?")
+            .setMessage(if (isRussian) "Удалить виджет?" else "Delete widget?")
+            .setPositiveButton(if (isRussian) "Да" else "Yes") { _, _ ->
+                vibrate()
+                widgetViews[widgetView]?.let { config ->
+                    testLayout = testLayout.copy(widgets = testLayout.widgets - config)
+                    displayDashboard(testLayout)
+                }
             }
-        }.setNegativeButton("Нет", null).show()
+            .setNegativeButton(if (isRussian) "Нет" else "No", null)
+            .show()
     }
 
     private fun showAddWidgetDialog() {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val types = WidgetType.entries.toTypedArray()
-        val names = types.map { it.name.lowercase().replace('_', ' ').replaceFirstChar { c -> c.uppercase() } }.toTypedArray()
-        AlertDialog.Builder(this).setTitle("Добавить виджет").setItems(names) { _, which ->
-            vibrate()
-            val type = types[which]
-            if (type == WidgetType.ACTION_BUTTON) {
-                showActionButtonConfigDialog { label, path, useIcon, theme ->
-                    val new = WidgetConfig(type, 0, 0, 2, 2, label, path, useIcon, theme = theme)
-                    testLayout = testLayout.copy(widgets = testLayout.widgets + new)
-                    displayDashboard(testLayout)
+        
+        val names = types.map { type ->
+            if (isRussian) {
+                when (type) {
+                    WidgetType.CPU -> "Процессор (CPU)"
+                    WidgetType.GPU -> "Видеокарта (GPU)"
+                    WidgetType.RAM -> "Оперативная память"
+                    WidgetType.STORAGE -> "Хранилище"
+                    WidgetType.NETWORK -> "Сеть"
+                    WidgetType.COOLING -> "Охлаждение"
+                    WidgetType.MEDIA_PLAYER -> "Медиаплеер"
+                    WidgetType.AUDIO_MIXER -> "Микшер громкости"
+                    WidgetType.CONTROLS -> "Управление"
+                    WidgetType.TOP_PROCESSES -> "Топ процессов"
+                    WidgetType.ACTION_BUTTON -> "Кнопка действия"
+                    else -> type.name
                 }
             } else {
-                showWidgetConfigDialog(type) { config ->
-                    testLayout = testLayout.copy(widgets = testLayout.widgets + config)
-                    displayDashboard(testLayout)
+                type.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
+            }
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle(if (isRussian) "Добавить виджет" else "Add Widget")
+            .setItems(names) { _, which ->
+                vibrate()
+                val type = types[which]
+                if (type == WidgetType.ACTION_BUTTON) {
+                    showActionButtonConfigDialog { label, path, useIcon, theme ->
+                        val new = WidgetConfig(type, 0, 0, 2, 2, label, path, useIcon, theme = theme)
+                        testLayout = testLayout.copy(widgets = testLayout.widgets + new)
+                        displayDashboard(testLayout)
+                    }
+                } else {
+                    showWidgetConfigDialog(type) { config ->
+                        testLayout = testLayout.copy(widgets = testLayout.widgets + config)
+                        displayDashboard(testLayout)
+                    }
                 }
             }
-        }.setNegativeButton("Отмена", null).show()
+            .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
+            .show()
     }
 
     private fun showWidgetConfigDialog(type: WidgetType, onSave: (WidgetConfig) -> Unit) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 32)
         }
         
         val themeLabel = TextView(this).apply { 
-            text = "Тема виджета:"
+            text = if (isRussian) "Тема виджета:" else "Widget Theme:"
             setPadding(0, 0, 0, 16)
         }
-        val themeOptions = arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        val themeOptions = if (isRussian) {
+            arrayOf("ПО УМОЛЧАНИЮ", "ФИОЛЕТОВАЯ", "БИРЮЗОВАЯ", "ОРАНЖЕВАЯ", "ЗЕЛЕНАЯ")
+        } else {
+            arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        }
         val themeSpinner = android.widget.Spinner(this).apply {
             adapter = android.widget.ArrayAdapter(this@CustomDashboardActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
         }
@@ -230,12 +267,37 @@ class CustomDashboardActivity : BaseActivity() {
         layout.addView(themeLabel)
         layout.addView(themeSpinner)
 
+        var checkDefault: CheckBox? = null
+        if (type == WidgetType.MEDIA_PLAYER) {
+            val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+            val defaultMediaIp = prefs.getString("DEFAULT_MEDIA_IP", "")
+            checkDefault = CheckBox(this).apply {
+                text = if (isRussian) "Использовать по умолчанию для шторки" else "Use as default for media shade"
+                isChecked = deviceIp == defaultMediaIp
+                setPadding(0, 24, 0, 0)
+            }
+            layout.addView(checkDefault)
+        }
+
         AlertDialog.Builder(this)
-            .setTitle("Настройка виджета")
+            .setTitle(if (isRussian) "Настройка виджета" else "Widget Settings")
             .setView(layout)
-            .setPositiveButton("Добавить") { _, _ ->
+            .setPositiveButton(if (isRussian) "Добавить" else "Add") { _, _ ->
                 vibrate()
-                val selectedTheme = if (themeSpinner.selectedItem.toString() == "DEFAULT") null else themeSpinner.selectedItem.toString()
+                
+                if (type == WidgetType.MEDIA_PLAYER && checkDefault?.isChecked == true) {
+                    getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("DEFAULT_MEDIA_IP", deviceIp)
+                        .apply()
+                    PCForegroundService.refresh(this@CustomDashboardActivity)
+                }
+
+                val selectedThemeIndex = themeSpinner.selectedItemPosition
+                val selectedTheme = if (selectedThemeIndex == 0) null else {
+                    arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")[selectedThemeIndex]
+                }
+
                 val config = when(type) {
                     WidgetType.MEDIA_PLAYER -> WidgetConfig(type, 0, 0, 4, 2, theme = selectedTheme)
                     WidgetType.CONTROLS -> WidgetConfig(type, 0, 0, 2, 2, theme = selectedTheme)
@@ -243,24 +305,29 @@ class CustomDashboardActivity : BaseActivity() {
                 }
                 onSave(config)
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
             .show()
     }
 
     private fun showActionButtonConfigDialog(onSave: (String, String, Boolean, String?) -> Unit) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 32)
         }
-        val editLabel = EditText(this).apply { hint = "Название кнопки (например, Steam)" }
-        val editPath = EditText(this).apply { hint = "Путь к файлу или URL" }
+        val editLabel = EditText(this).apply { hint = if (isRussian) "Название кнопки (например, Steam)" else "Button label (e.g. Steam)" }
+        val editPath = EditText(this).apply { hint = if (isRussian) "Путь к файлу или URL" else "File path or URL" }
         val checkUseIcon = CheckBox(this).apply { 
-            text = "Иконка вместо названия"
+            text = if (isRussian) "Иконка вместо названия" else "Icon instead of label"
             setPadding(0, 24, 0, 24)
         }
         
-        val themeLabel = TextView(this).apply { text = "Тема кнопки:" }
-        val themeOptions = arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        val themeLabel = TextView(this).apply { text = if (isRussian) "Тема кнопки:" else "Button theme:" }
+        val themeOptions = if (isRussian) {
+            arrayOf("ПО УМОЛЧАНИЮ", "ФИОЛЕТОВАЯ", "БИРЮЗОВАЯ", "ОРАНЖЕВАЯ", "ЗЕЛЕНАЯ")
+        } else {
+            arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        }
         val themeSpinner = android.widget.Spinner(this).apply {
             adapter = android.widget.ArrayAdapter(this@CustomDashboardActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
         }
@@ -272,14 +339,17 @@ class CustomDashboardActivity : BaseActivity() {
         layout.addView(themeSpinner)
 
         AlertDialog.Builder(this)
-            .setTitle("Настройка кнопки")
+            .setTitle(if (isRussian) "Настройка кнопки" else "Button Settings")
             .setView(layout)
-            .setPositiveButton("Добавить") { _, _ ->
+            .setPositiveButton(if (isRussian) "Добавить" else "Add") { _, _ ->
                 vibrate()
-                val selectedTheme = if (themeSpinner.selectedItem.toString() == "DEFAULT") null else themeSpinner.selectedItem.toString()
+                val selectedThemeIndex = themeSpinner.selectedItemPosition
+                val selectedTheme = if (selectedThemeIndex == 0) null else {
+                    arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")[selectedThemeIndex]
+                }
                 onSave(editLabel.text.toString(), editPath.text.toString(), checkUseIcon.isChecked, selectedTheme)
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
             .show()
     }
 
@@ -402,8 +472,9 @@ class CustomDashboardActivity : BaseActivity() {
     }
 
     private fun sendRunCommand(path: String) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         webSocketManager?.sendCommand("run", mapOf("path" to path))
-        Toast.makeText(this, "Команда отправлена", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, if (isRussian) "Команда отправлена" else "Command sent", Toast.LENGTH_SHORT).show()
     }
 
     private fun sendMinimizeCommand() {

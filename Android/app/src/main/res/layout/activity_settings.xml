@@ -189,6 +189,30 @@
         android:text="Показывать плеер в шторке для активных устройств"
         android:textColor="@color/text_gray"
         android:textSize="14sp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="24dp" />
+
+    <TextView
+        android:id="@+id/default_media_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Приоритетное устройство в шторке"
+        android:textColor="@color/text_white"
+        android:textSize="18sp" />
+
+    <Spinner
+        android:id="@+id/spinner_default_media"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/default_media_desc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Если несколько устройств играют музыку, в шторке останется только выбранное"
+        android:textColor="@color/text_gray"
+        android:textSize="14sp"
         android:layout_marginTop="4dp" />
 
 </LinearLayout>
