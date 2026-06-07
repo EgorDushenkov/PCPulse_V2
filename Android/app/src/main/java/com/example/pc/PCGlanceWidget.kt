@@ -14,7 +14,6 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.action.actionStartService
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -24,10 +23,13 @@ import androidx.glance.layout.*
 import androidx.glance.unit.ColorProvider
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
+import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.ActionCallback
 import com.google.gson.Gson
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -39,6 +41,8 @@ class PCGlanceWidget : GlanceAppWidget() {
 
     companion object {
         val DATA_KEY = stringPreferencesKey("pc_stats_json")
+        val LAST_UPDATE_KEY = longPreferencesKey("last_optimistic_update")
+        val IS_ONLINE_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("is_online")
     }
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -61,6 +65,7 @@ class PCGlanceWidget : GlanceAppWidget() {
         
         // Try to get stats from Glance State first (it's the most reactive way)
         var statsJson = state[DATA_KEY]
+        val isOnline = state[IS_ONLINE_KEY] ?: true // Default to true if not set
         
         // If state is empty or belongs to another IP (in case of multiple widgets), fallback to cache
         // Actually, for multiple widgets we should store a Map in the state or use per-widget state
@@ -69,7 +74,7 @@ class PCGlanceWidget : GlanceAppWidget() {
             statsJson = context.getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE).getString(deviceIp, null)
         }
         
-        Log.d("PC_WIDGET_DEBUG", "Glance UI: Метод Content() вызван! JSON: ${statsJson?.take(50)}...")
+        Log.d("PC_WIDGET_DEBUG", "Glance UI: Метод Content() вызван! JSON: ${statsJson?.take(50)}..., Online: $isOnline")
         
         val stats = statsJson?.let { Gson().fromJson(it, PCStats::class.java) }
         val layout = layoutJson?.let { Gson().fromJson(it, DashboardLayout::class.java) }
@@ -93,7 +98,7 @@ class PCGlanceWidget : GlanceAppWidget() {
 
         Box(modifier = GlanceModifier.fillMaxSize().cornerRadius(16.dp)) {
             // 1. Pixel-perfect background
-            val fullBitmap = renderLayoutToBitmap(context, layout, stats)
+            val fullBitmap = renderLayoutToBitmap(context, layout, stats, isOnline)
             if (fullBitmap != null) {
                 Image(
                     provider = ImageProvider(fullBitmap),
@@ -156,14 +161,13 @@ class PCGlanceWidget : GlanceAppWidget() {
                                                 .padding(top = topPadding)) {
                                                 listOf(0, 25, 50, 75, 100).forEach { vol ->
                                                     Box(modifier = GlanceModifier.defaultWeight().fillMaxHeight().clickable(
-                                                        actionStartService(
-                                                            Intent(context, PCForegroundService::class.java).apply {
-                                                                action = PCForegroundService.ACTION_SEND_COMMAND
-                                                                putExtra("DEVICE_IP", deviceIp)
-                                                                putExtra("action_type", "set_mixer_volume")
-                                                                putExtra("APP_NAME", session.name)
-                                                                putExtra("VOLUME", vol.toString())
-                                                            }
+                                                        actionRunCallback<OptimisticWidgetAction>(
+                                                            actionParametersOf(
+                                                                OptimisticWidgetAction.ipKey to deviceIp,
+                                                                OptimisticWidgetAction.actionTypeKey to "set_mixer_volume",
+                                                                OptimisticWidgetAction.appNameKey to session.name,
+                                                                OptimisticWidgetAction.volumeKey to vol.toString()
+                                                            )
                                                         )
                                                     )) {}
                                                 }
@@ -184,13 +188,12 @@ class PCGlanceWidget : GlanceAppWidget() {
                                                 Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
                                                     listOf("prev", "play_pause", "next").forEach { cmd ->
                                                         Box(modifier = GlanceModifier.defaultWeight().fillMaxHeight().clickable(
-                                                            actionStartService(
-                                                                Intent(context, PCForegroundService::class.java).apply {
-                                                                    action = PCForegroundService.ACTION_SEND_COMMAND
-                                                                    putExtra("DEVICE_IP", deviceIp)
-                                                                    putExtra("action_type", "media")
-                                                                    putExtra("ACTION", cmd)
-                                                                }
+                                                            actionRunCallback<OptimisticWidgetAction>(
+                                                                actionParametersOf(
+                                                                    OptimisticWidgetAction.ipKey to deviceIp,
+                                                                    OptimisticWidgetAction.actionTypeKey to "media",
+                                                                    OptimisticWidgetAction.actionValueKey to cmd
+                                                                )
                                                             )
                                                         )) {}
                                                     }
@@ -217,13 +220,12 @@ class PCGlanceWidget : GlanceAppWidget() {
         }
     }
 
-    private fun createAction(context: Context, ip: String, command: String, actionValue: String?) = actionStartService(
-        Intent(context, PCForegroundService::class.java).apply {
-            action = PCForegroundService.ACTION_SEND_COMMAND
-            putExtra("DEVICE_IP", ip)
-            putExtra("action_type", command)
-            if (actionValue != null) putExtra("ACTION", actionValue)
-        }
+    private fun createAction(context: Context, ip: String, command: String, actionValue: String?) = actionRunCallback<OptimisticWidgetAction>(
+        actionParametersOf(
+            OptimisticWidgetAction.ipKey to ip,
+            OptimisticWidgetAction.actionTypeKey to command,
+            OptimisticWidgetAction.actionValueKey to (actionValue ?: "")
+        )
     )
 
     private fun getAppWidgetId(context: Context, glanceId: GlanceId): Int {
@@ -238,7 +240,7 @@ class PCGlanceWidget : GlanceAppWidget() {
         }
     }
 
-    private fun renderLayoutToBitmap(context: Context, layout: DashboardLayout, stats: PCStats?): Bitmap? {
+    private fun renderLayoutToBitmap(context: Context, layout: DashboardLayout, stats: PCStats?, isOnline: Boolean): Bitmap? {
         val density = context.resources.displayMetrics.density
         // Use a fixed virtual size for the bitmap to ensure consistency
         val cellPx = 200 // Higher resolution for better quality
@@ -256,8 +258,12 @@ class PCGlanceWidget : GlanceAppWidget() {
 
         layout.widgets.forEach { config ->
             val view = WidgetFactory.create(config, context, isWidget = true)
-            if (stats != null && view is UpdatableWidget) {
-                view.updateData(stats)
+            if (view is UpdatableWidget) {
+                if (isOnline && stats != null) {
+                    view.updateData(stats)
+                } else {
+                    view.setOffline()
+                }
             }
             
             val gap = 8
@@ -279,6 +285,78 @@ class PCGlanceWidget : GlanceAppWidget() {
     }
 }
 
+class OptimisticWidgetAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val ip = parameters[ipKey] ?: return
+        val actionType = parameters[actionTypeKey] ?: return
+        val actionValue = parameters[actionValueKey]
+        val appName = parameters[appNameKey]
+        val volumeValue = parameters[volumeKey]
+
+        // 1. Update state optimistically
+        updateAppWidgetState(context, glanceId) { prefs ->
+            prefs[PCGlanceWidget.LAST_UPDATE_KEY] = System.currentTimeMillis()
+            val statsJson = prefs[PCGlanceWidget.DATA_KEY]
+            if (statsJson != null) {
+                try {
+                    val stats = Gson().fromJson(statsJson, PCStats::class.java)
+                    var updated = false
+                    val newStats = when (actionType.lowercase()) {
+                        "mute_mic", "set_mic_mute" -> {
+                            updated = true
+                            stats.copy(mic_muted = actionValue == "1")
+                        }
+                        "set_mixer_volume" -> {
+                            if (appName != null && volumeValue != null) {
+                                val vol = volumeValue.toIntOrNull() ?: 0
+                                val newSessions = stats.audio_sessions.map {
+                                    if (it.name == appName) it.copy(volume = vol) else it
+                                }
+                                updated = true
+                                stats.copy(audio_sessions = newSessions)
+                            } else stats
+                        }
+                        "media" -> {
+                            if (actionValue == "play_pause") {
+                                val currentStatus = stats.media?.status ?: 0
+                                val newStatus = if (currentStatus == 4) 0 else 4
+                                updated = true
+                                stats.copy(media = stats.media?.copy(status = newStatus))
+                            } else stats
+                        }
+                        else -> stats
+                    }
+                    if (updated) {
+                        prefs[PCGlanceWidget.DATA_KEY] = Gson().toJson(newStats)
+                    }
+                } catch (e: Exception) {
+                    Log.e("PC_WIDGET_DEBUG", "Optimistic update failed", e)
+                }
+            }
+        }
+        PCGlanceWidget().update(context, glanceId)
+
+        // 2. Send command to service
+        val intent = Intent(context, PCForegroundService::class.java).apply {
+            action = PCForegroundService.ACTION_SEND_COMMAND
+            putExtra("DEVICE_IP", ip)
+            putExtra("action_type", actionType)
+            if (!actionValue.isNullOrEmpty()) putExtra("ACTION", actionValue)
+            if (!appName.isNullOrEmpty()) putExtra("APP_NAME", appName)
+            if (!volumeValue.isNullOrEmpty()) putExtra("VOLUME", volumeValue)
+        }
+        context.startService(intent)
+    }
+
+    companion object {
+        val ipKey = ActionParameters.Key<String>("device_ip")
+        val actionTypeKey = ActionParameters.Key<String>("action_type")
+        val actionValueKey = ActionParameters.Key<String>("action_value")
+        val appNameKey = ActionParameters.Key<String>("app_name")
+        val volumeKey = ActionParameters.Key<String>("volume_value")
+    }
+}
+
 class PCGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = PCGlanceWidget()
     private val scope = MainScope()
@@ -290,10 +368,13 @@ class PCGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
         if (action == "com.example.pc.ACTION_STATS_UPDATE") {
             val ip = intent.getStringExtra("DEVICE_IP")
             val statsJson = intent.getStringExtra("DIRECT_STATS")
+            val isOnline = intent.getBooleanExtra("IS_ONLINE", true)
             
-            if (ip != null && statsJson != null) {
-                context.getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE)
-                    .edit().putString(ip, statsJson).commit()
+            if (ip != null) {
+                if (statsJson != null) {
+                    context.getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE)
+                        .edit().putString(ip, statsJson).commit()
+                }
                 
                 val pendingResult = goAsync()
                 scope.launch {
@@ -308,13 +389,19 @@ class PCGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
                             
                             // Update state only for widgets matching this IP
                             if (widgetIp == ip) {
-                                updateAppWidgetState(context, id) { prefs ->
-                                    prefs[PCGlanceWidget.DATA_KEY] = statsJson
+                                updateAppWidgetState(context, id) { statePrefs ->
+                                    statePrefs[PCGlanceWidget.IS_ONLINE_KEY] = isOnline
+                                    if (isOnline && statsJson != null) {
+                                        val lastOptimistic = statePrefs[PCGlanceWidget.LAST_UPDATE_KEY] ?: 0L
+                                        if (System.currentTimeMillis() - lastOptimistic > 1000L) {
+                                            statePrefs[PCGlanceWidget.DATA_KEY] = statsJson
+                                        }
+                                    }
                                 }
                                 glanceAppWidget.update(context, id)
                             }
                         }
-                        Log.d("PC_WIDGET_DEBUG", "Ресивер: Состояние обновлено для IP: $ip")
+                        Log.d("PC_WIDGET_DEBUG", "Ресивер: Состояние обновлено для IP: $ip, Online: $isOnline")
                     } catch (e: Exception) {
                         Log.e("PC_WIDGET_DEBUG", "Ресивер: Ошибка", e)
                     } finally {

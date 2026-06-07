@@ -92,6 +92,12 @@ class CustomDashboardActivity : BaseActivity() {
         widgetViews.keys.forEach { (it as? UpdatableWidget)?.updateData(stats) }
     }
 
+    override fun onStatusChanged(isOnline: Boolean) {
+        if (!isOnline) {
+            widgetViews.keys.forEach { (it as? UpdatableWidget)?.setOffline() }
+        }
+    }
+
     private fun hideSystemUI() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.setDecorFitsSystemWindows(false)

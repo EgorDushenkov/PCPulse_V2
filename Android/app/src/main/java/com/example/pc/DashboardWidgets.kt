@@ -28,6 +28,9 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import android.content.res.ColorStateList
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 
 fun Context.getThemeColor(attr: Int): Int {
     val typedValue = TypedValue()
@@ -206,6 +209,13 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
         }
     }
 
+    override fun setOffline() {
+        if (appState != 0) {
+            appState = 0
+            invalidate()
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (appState == 0) return
@@ -283,6 +293,12 @@ class ControlsWidgetView(context: Context) : BaseWidgetView(context) {
         isMuted = stats.mic_muted
         updateMicUI(isMuted)
     }
+
+    override fun setOffline() {
+        isMuted = false
+        updateMicUI(false)
+        btnMic.setColorFilter(Color.GRAY)
+    }
 }
 
 class MediaPlayerWidgetView @JvmOverloads constructor(
@@ -301,6 +317,7 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
     private var optimisticStatus: Int? = null
     private var optimisticStatusTime = 0L
     private val OPTIMISTIC_TIMEOUT = 2500L
+    private var currentConfig: WidgetConfig? = null
 
     init {
         val root = LinearLayout(context).apply {
@@ -331,32 +348,33 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
             gravity = Gravity.CENTER
         }
 
-        val btnSize = 48f.dpToPx(context).toInt()
-        val iconPadding = 8f.dpToPx(context).toInt()
+        val sideBtnSize = 44f.dpToPx(context).toInt()
+        val mainBtnSize = 56f.dpToPx(context).toInt()
+        val iconPadding = 12f.dpToPx(context).toInt()
 
         btnPrev = ImageButton(context).apply {
-            layoutParams = LinearLayout.LayoutParams(btnSize, btnSize)
+            layoutParams = LinearLayout.LayoutParams(sideBtnSize, sideBtnSize)
             setImageResource(R.drawable.ic_prev)
-            setBackgroundResource(android.R.color.transparent)
+            background = createRoundedRipple()
             setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
         btnPlayPause = ImageButton(context).apply {
-            layoutParams = LinearLayout.LayoutParams(btnSize, btnSize).apply {
-                setMargins(24f.dpToPx(context).toInt(), 0, 24f.dpToPx(context).toInt(), 0)
+            layoutParams = LinearLayout.LayoutParams(mainBtnSize, mainBtnSize).apply {
+                setMargins(16f.dpToPx(context).toInt(), 0, 16f.dpToPx(context).toInt(), 0)
             }
             setImageResource(R.drawable.ic_pause)
-            setBackgroundResource(android.R.color.transparent)
+            background = createRoundedRipple()
             setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
         btnNext = ImageButton(context).apply {
-            layoutParams = LinearLayout.LayoutParams(btnSize, btnSize)
+            layoutParams = LinearLayout.LayoutParams(sideBtnSize, sideBtnSize)
             setImageResource(R.drawable.ic_prev)
             rotation = 180f
-            setBackgroundResource(android.R.color.transparent)
+            background = createRoundedRipple()
             setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
@@ -383,6 +401,25 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
         btnNext.setOnClickListener { onVibrate?.invoke(); onCommand?.invoke("next") }
     }
 
+    private fun createRoundedRipple(): android.graphics.drawable.Drawable {
+        val r = 14f.dpToPx(context)
+        val content = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = r
+            setColor(Color.parseColor("#1AFFFFFF"))
+        }
+        val mask = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = r
+            setColor(Color.WHITE)
+        }
+        return RippleDrawable(
+            ColorStateList.valueOf(Color.WHITE),
+            content,
+            mask
+        )
+    }
+
     private fun updatePlayPauseIcon(status: Int) {
         btnPlayPause.setImageResource(if (status == 4) R.drawable.ic_pause else R.drawable.ic_play)
     }
@@ -390,6 +427,14 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
     fun setCallbacks(onVibrate: () -> Unit, onCommand: (String) -> Unit) {
         this.onVibrate = onVibrate
         this.onCommand = onCommand
+    }
+
+    override fun updateConfig(config: WidgetConfig) {
+        this.currentConfig = config
+        val color = context.getWidgetColor(config.theme)
+        btnPrev.setColorFilter(color)
+        btnPlayPause.setColorFilter(color)
+        btnNext.setColorFilter(color)
     }
 
     override fun updateData(stats: PCStats) {
@@ -405,12 +450,32 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
                 currentStatus = media.status
             }
             updatePlayPauseIcon(currentStatus)
+            
+            val color = context.getWidgetColor(currentConfig?.theme)
+            btnPrev.setColorFilter(color)
+            btnPlayPause.setColorFilter(color)
+            btnNext.setColorFilter(color)
+
             visibility = View.VISIBLE
         } ?: run {
             titleText.text = Localization.get(context, "NO_MEDIA")
             artistText.text = ""
             btnPlayPause.setImageResource(R.drawable.ic_play)
+            val gray = Color.GRAY
+            btnPrev.setColorFilter(gray)
+            btnPlayPause.setColorFilter(gray)
+            btnNext.setColorFilter(gray)
         }
+    }
+
+    override fun setOffline() {
+        titleText.text = "OFFLINE"
+        artistText.text = ""
+        btnPlayPause.setImageResource(R.drawable.ic_play)
+        val gray = Color.GRAY
+        btnPrev.setColorFilter(gray)
+        btnPlayPause.setColorFilter(gray)
+        btnNext.setColorFilter(gray)
     }
 }
 
@@ -577,6 +642,17 @@ class AudioMixerWidgetView @JvmOverloads constructor(
             }
         }
     }
+
+    override fun setOffline() {
+        container.removeAllViews()
+        val offlineText = TextView(context).apply {
+            text = "OFFLINE"
+            setTextColor(Color.GRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, 16, 0, 0)
+        }
+        container.addView(offlineText)
+    }
     
     private fun getVolToShow(name: String, serverVol: Int): Int {
         val now = System.currentTimeMillis()
@@ -637,6 +713,17 @@ class StorageWidgetView(context: Context) : BaseWidgetView(context) {
             container.addView(v)
         }
     }
+
+    override fun setOffline() {
+        container.removeAllViews()
+        val offlineText = TextView(context).apply {
+            text = "OFFLINE"
+            setTextColor(Color.GRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, 16, 0, 0)
+        }
+        container.addView(offlineText)
+    }
 }
 
 class CoolingWidgetView(context: Context) : BaseWidgetView(context) {
@@ -668,6 +755,10 @@ class CoolingWidgetView(context: Context) : BaseWidgetView(context) {
         titleText.setTextColor(color)
         val info = stats.fans.joinToString("\n") { "${it.name}: ${it.rpm} RPM" }
         fansText.text = info.ifEmpty { Localization.get(context, "NO_FANS") }
+    }
+
+    override fun setOffline() {
+        fansText.text = "OFFLINE"
     }
 }
 
@@ -724,6 +815,10 @@ class TopProcessesWidgetView(context: Context) : BaseWidgetView(context) {
             })
             container.addView(row)
         }
+    }
+
+    override fun setOffline() {
+        container.removeAllViews()
     }
 }
 
@@ -834,6 +929,11 @@ class CpuWidgetView(context: Context) : SpeedometerWidgetView(context) {
         speedometer.setValue(stats.cpu.usage.toFloat())
         detailText.text = "${stats.cpu.freq.toInt()} MHz | ${stats.cpu.temp}°C"
     }
+
+    override fun setOffline() {
+        speedometer.setValue(0f)
+        detailText.text = "--- MHz | --°C"
+    }
 }
 
 class RamWidgetView(context: Context) : SpeedometerWidgetView(context) {
@@ -841,6 +941,11 @@ class RamWidgetView(context: Context) : SpeedometerWidgetView(context) {
         labelText.text = Localization.get(context, "RAM")
         speedometer.setValue(stats.ram.usage.toFloat())
         detailText.text = "${stats.ram.used} / ${stats.ram.total} GB"
+    }
+
+    override fun setOffline() {
+        speedometer.setValue(0f)
+        detailText.text = "- / - GB"
     }
 }
 
@@ -853,6 +958,11 @@ class GpuWidgetView(context: Context) : SpeedometerWidgetView(context) {
             speedometer.setValue(g.load.toFloat())
             detailText.text = "${g.temp}°C | VRAM: ${g.mem_p}%"
         }
+    }
+
+    override fun setOffline() {
+        speedometer.setValue(0f)
+        detailText.text = "--°C | VRAM: --%"
     }
 }
 
@@ -888,6 +998,11 @@ class NetworkWidgetView(context: Context) : BaseWidgetView(context) {
         titleText.setTextColor(color)
         downText.text = "↓ ${stats.network.down_kbps.toInt()} KB/s"
         upText.text = "↑ ${stats.network.up_kbps.toInt()} KB/s"
+    }
+
+    override fun setOffline() {
+        downText.text = "↓ 0 KB/s"
+        upText.text = "↑ 0 KB/s"
     }
 }
 

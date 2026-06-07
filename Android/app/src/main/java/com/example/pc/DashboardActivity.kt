@@ -54,6 +54,21 @@ class DashboardActivity : BaseActivity() {
         }
     }
 
+    override fun onStatusChanged(isOnline: Boolean) {
+        if (!isOnline) {
+            uptimeText.text = "OFFLINE"
+            cpuSpeedometer.setValue(0f)
+            cpuDetailText.text = "--- MHz | --°C"
+            ramSpeedometer.setValue(0f)
+            ramDetailText.text = "- / - GB"
+            gpuSpeedometer.setValue(0f)
+            gpuDetailText.text = "--°C | VRAM: --%"
+            netDownText.text = "↓ 0 KB/s"
+            netUpText.text = "↑ 0 KB/s"
+            containers.values.forEach { (it.getChildAt(0) as? UpdatableWidget)?.setOffline() }
+        }
+    }
+
     private fun hideSystemUI() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.setDecorFitsSystemWindows(false)

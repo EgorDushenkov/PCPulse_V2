@@ -30,6 +30,7 @@ abstract class BaseActivity : AppCompatActivity() {
     protected val gson = Gson()
 
     open fun onStatsUpdated(stats: PCStats) {}
+    open fun onStatusChanged(isOnline: Boolean) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyAppTheme()
@@ -43,7 +44,9 @@ abstract class BaseActivity : AppCompatActivity() {
 
             currentApi = RetrofitClient.getClient(ip)
             
-            webSocketManager = WebSocketManager(gson, null) { stats ->
+            webSocketManager = WebSocketManager(gson, { isOnline ->
+                runOnUiThread { onStatusChanged(isOnline) }
+            }) { stats ->
                 onStatsUpdated(stats)
             }
             webSocketManager?.connect("ws://$ip:5000/ws")

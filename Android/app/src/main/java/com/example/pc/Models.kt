@@ -73,6 +73,7 @@ data class DashboardLayout(
 
 interface UpdatableWidget {
     fun updateData(stats: PCStats)
+    fun setOffline() {}
     fun updateConfig(config: WidgetConfig) {}
 }
 

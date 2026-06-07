@@ -153,6 +153,7 @@ class PCForegroundService : Service() {
                         if (!isOnline) {
                             deviceStats.remove(ip)
                             broadcastStatus(ip, false)
+                            broadcastOfflineForWidget(ip)
                             updateNotification()
                         }
                     },
@@ -180,6 +181,15 @@ class PCForegroundService : Service() {
             putExtra("IS_ONLINE", isOnline)
         }
         sendBroadcast(intent)
+    }
+
+    private fun broadcastOfflineForWidget(ip: String) {
+        val widgetIntent = Intent("com.example.pc.ACTION_STATS_UPDATE").apply {
+            component = ComponentName(this@PCForegroundService, PCGlanceWidgetReceiver::class.java)
+            putExtra("DEVICE_IP", ip)
+            putExtra("IS_ONLINE", false)
+        }
+        sendBroadcast(widgetIntent)
     }
 
     private fun broadcastStats(ip: String, stats: PCStats) {
