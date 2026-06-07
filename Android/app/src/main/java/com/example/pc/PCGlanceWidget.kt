@@ -15,6 +15,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartService
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
@@ -130,9 +131,17 @@ class PCGlanceWidget : GlanceAppWidget() {
                                                     }
                                                     if (command != null) {
                                                         val actionValue = if (command == "MUTE_MIC") (if (stats?.mic_muted == true) "0" else "1") else null
-                                                        Box(modifier = GlanceModifier.fillMaxSize().clickable(
+                                                        val clickAction = if (command == "SCREENSHOT") {
+                                                            actionStartActivity(
+                                                                Intent(context, ScreenshotActivity::class.java).apply {
+                                                                    putExtra("DEVICE_IP", deviceIp)
+                                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                                }
+                                                            )
+                                                        } else {
                                                             createAction(context, deviceIp, command, actionValue)
-                                                        )) {}
+                                                        }
+                                                        Box(modifier = GlanceModifier.fillMaxSize().clickable(clickAction)) {}
                                                     }
                                                 }
                                             }
