@@ -285,7 +285,10 @@ class ControlsWidgetView(context: Context) : BaseWidgetView(context) {
     }
 }
 
-class MediaPlayerWidgetView(context: Context) : BaseWidgetView(context) {
+class MediaPlayerWidgetView @JvmOverloads constructor(
+    context: Context, 
+    private val isWidgetMode: Boolean = false
+) : BaseWidgetView(context) {
     private val titleText: TextView
     private val artistText: TextView
     private val btnPrev: ImageButton
@@ -411,7 +414,10 @@ class MediaPlayerWidgetView(context: Context) : BaseWidgetView(context) {
     }
 }
 
-class AudioMixerWidgetView(context: Context) : BaseWidgetView(context) {
+class AudioMixerWidgetView @JvmOverloads constructor(
+    context: Context, 
+    private val isWidgetMode: Boolean = false
+) : BaseWidgetView(context) {
     private val container: LinearLayout
     private val titleText: TextView
     private var onVolumeChange: ((String, Int) -> Unit)? = null
@@ -422,20 +428,27 @@ class AudioMixerWidgetView(context: Context) : BaseWidgetView(context) {
     private val OPTIMISTIC_TIMEOUT = 3000L
 
     init {
-        val root = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        val root = LinearLayout(context).apply { 
+            orientation = LinearLayout.VERTICAL 
+            layoutParams = LayoutParams(-1, -1)
+        }
         titleText = TextView(context).apply {
             text = Localization.get(context, "AUDIO_MIXER")
             setTextColor(context.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
-            textSize = 12f
+            textSize = 10f
             paint.isFakeBoldText = true
-            setPadding(0, 0, 0, 8f.dpToPx(context).toInt())
+            setPadding(0, 0, 0, 4f.dpToPx(context).toInt())
         }
         root.addView(titleText)
+        
         val scroll = ScrollView(context).apply {
             isVerticalScrollBarEnabled = false
             layoutParams = LinearLayout.LayoutParams(-1, -1)
         }
-        container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        container = LinearLayout(context).apply { 
+            orientation = LinearLayout.VERTICAL 
+            layoutParams = LayoutParams(-1, -2)
+        }
         scroll.addView(container)
         root.addView(scroll)
         addView(root)
@@ -460,6 +473,60 @@ class AudioMixerWidgetView(context: Context) : BaseWidgetView(context) {
         titleText.text = Localization.get(context, "AUDIO_MIXER")
         val color = context.getWidgetColor(currentConfig?.theme)
         titleText.setTextColor(color)
+        
+        // In widget mode, we often need a clean redraw because of the small space
+        if (isWidgetMode) {
+            container.removeAllViews()
+            stats.audio_sessions.take(3).forEach { session -> // Take top 3 to fit in widget
+                val item = LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(0, 0, 0, 8f.dpToPx(context).toInt())
+                }
+                
+                val nameText = TextView(context).apply {
+                    text = session.name
+                    setTextColor(Color.WHITE)
+                    textSize = 11f
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                }
+                item.addView(nameText)
+                
+                val buttonsRow = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(-1, 24f.dpToPx(context).toInt())
+                }
+                
+                val volToShow = getVolToShow(session.name, session.volume)
+                val volumes = listOf(0, 25, 50, 75, 100)
+                
+                volumes.forEach { vol ->
+                    val isSelected = Math.abs(volToShow - vol) < 12 // Closest one
+                    val btn = TextView(context).apply {
+                        text = "$vol"
+                        setTextColor(if (isSelected) Color.BLACK else Color.WHITE)
+                        setBackgroundResource(R.drawable.mixer_btn_bg)
+                        backgroundTintList = android.content.res.ColorStateList.valueOf(
+                            if (isSelected) color else Color.parseColor("#3D3D3D")
+                        )
+                        gravity = Gravity.CENTER
+                        textSize = 9f
+                        layoutParams = LinearLayout.LayoutParams(0, -1, 1f).apply {
+                            setMargins(2, 0, 2, 0)
+                        }
+                        setOnClickListener {
+                            onVolumeChange?.invoke(session.name, vol)
+                            onVibrate?.invoke()
+                        }
+                    }
+                    buttonsRow.addView(btn)
+                }
+                item.addView(buttonsRow)
+                container.addView(item)
+            }
+            return
+        }
+
         val current = stats.audio_sessions.map { it.name }.toSet()
         val existing = (0 until container.childCount).map { container.getChildAt(it).tag as String }.toSet()
 
@@ -828,6 +895,7 @@ object WidgetFactory {
     fun create(
         config: WidgetConfig,
         context: Context,
+        isWidget: Boolean = false,
         onVibrate: () -> Unit = {},
         onScreenshot: (() -> Unit)? = null,
         onMicMute: ((Boolean) -> Unit)? = null,
@@ -854,11 +922,11 @@ object WidgetFactory {
                 setup(config, onVibrate, onRunCommand ?: {}, onMinimizeCommand ?: {}, onCloseCommand ?: {})
                 updateConfig(config)
             }
-            WidgetType.MEDIA_PLAYER -> MediaPlayerWidgetView(context).apply {
+            WidgetType.MEDIA_PLAYER -> MediaPlayerWidgetView(context, isWidget).apply {
                 setCallbacks(onVibrate, onMediaCommand ?: {})
                 updateConfig(config)
             }
-            WidgetType.AUDIO_MIXER -> AudioMixerWidgetView(context).apply {
+            WidgetType.AUDIO_MIXER -> AudioMixerWidgetView(context, isWidget).apply {
                 setCallbacks(onVibrate, onVolumeChange ?: { _, _ -> })
                 updateConfig(config)
             }

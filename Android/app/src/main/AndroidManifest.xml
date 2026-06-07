@@ -49,11 +49,12 @@
             android:foregroundServiceType="dataSync" />
 
         <receiver
-            android:name=".PCAppWidgetProvider"
+            android:name=".PCGlanceWidgetReceiver"
             android:exported="true"
             android:label="PC Pulse Widget">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.pc.STATS_UPDATE" />
                 <action android:name="com.example.pc.ACTION_STATS_UPDATE" />
                 <action android:name="com.example.pc.WIDGET_PINNED_SUCCESS" />
             </intent-filter>

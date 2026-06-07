@@ -11,8 +11,15 @@ import androidx.media.app.NotificationCompat as MediaNotificationCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.content.ComponentName
 import android.graphics.Bitmap
 import com.google.gson.Gson
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import androidx.glance.appwidget.updateAll
 import java.util.concurrent.ConcurrentHashMap
 
 class PCForegroundService : Service() {
@@ -21,6 +28,9 @@ class PCForegroundService : Service() {
     private val connections = ConcurrentHashMap<String, WebSocketManager>()
     private val deviceStats = ConcurrentHashMap<String, PCStats>()
     private val mediaSessions = ConcurrentHashMap<String, MediaSessionCompat>()
+    private var lastWidgetUpdateTime = 0L
+    private val serviceScope = MainScope()
+    private val debounceJobs = ConcurrentHashMap<String, Job>()
 
     companion object {
         const val CHANNEL_ID = "PC_MONITOR_SERVICE"
@@ -63,13 +73,17 @@ class PCForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        if (intent == null) {
+            startForegroundService()
+            return START_STICKY
+        }
+        when (intent.action) {
             ACTION_START -> startForegroundService()
             ACTION_REFRESH -> updateConnections()
             ACTION_STOP -> stopSelf()
             ACTION_SEND_COMMAND -> {
                 val ip = intent.getStringExtra("DEVICE_IP")
-                val cmd = intent.getStringExtra("CMD")
+                val cmd = intent.getStringExtra("CMD") ?: intent.getStringExtra("action_type")?.lowercase()
                 val action = intent.getStringExtra("ACTION")
                 if (ip != null && cmd != null) {
                     val socket = connections[ip]
@@ -80,14 +94,27 @@ class PCForegroundService : Service() {
                         "run" -> {
                             if (action != null) socket?.sendCommand("run", mapOf("path" to action))
                         }
-                        "set_mic_mute" -> {
-                            if (action != null) {
-                                val mute = action == "1"
-                                socket?.sendCommand("set_mic_mute", mapOf("mute" to if (mute) 1 else 0))
+                        "mute_mic", "set_mic_mute" -> {
+                            val mute = if (action != null) action == "1" else true // Default to toggle or specific
+                            socket?.sendCommand("set_mic_mute", mapOf("mute" to if (mute) 1 else 0))
+                        }
+                        "screenshot" -> socket?.sendCommand("screenshot")
+                        "sleep" -> socket?.sendCommand("sleep")
+                        "shutdown" -> socket?.sendCommand("shutdown")
+                        "set_mixer_volume" -> {
+                            val app = intent.getStringExtra("APP_NAME")
+                            val vol = intent.getStringExtra("VOLUME")?.toIntOrNull()
+                            if (ip != null && app != null && vol != null) {
+                                val key = "$ip|$app"
+                                debounceJobs[key]?.cancel()
+                                debounceJobs[key] = serviceScope.launch {
+                                    delay(150)
+                                    socket?.sendCommand("set_mixer_volume", mapOf("app" to app, "vol" to vol))
+                                }
                             }
                         }
                         else -> {
-                            // Single word commands like "screenshot", "shutdown", etc.
+                            // Single word commands
                             socket?.sendCommand(cmd)
                         }
                     }
@@ -158,16 +185,11 @@ class PCForegroundService : Service() {
     private fun broadcastStats(ip: String, stats: PCStats) {
         val statsJson = gson.toJson(stats)
         
-        // Cache for widgets
+        // Cache for widgets - use commit to ensure it's written before widget update
         getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE)
-            .edit().putString(ip, statsJson).apply()
+            .edit().putString(ip, statsJson).commit()
 
-        // Explicitly update widgets
-        val updateIntent = Intent(this, PCAppWidgetProvider::class.java).apply {
-            action = ACTION_STATS_UPDATE
-        }
-        sendBroadcast(updateIntent)
-
+        // 1. Universal broadcast for the app UI
         val intent = Intent(ACTION_STATS_UPDATE).apply {
             setPackage(packageName)
             putExtra("DEVICE_IP", ip)
@@ -175,6 +197,19 @@ class PCForegroundService : Service() {
             putExtra("STATS_JSON", statsJson)
         }
         sendBroadcast(intent)
+
+        // 2. Explicit broadcast for Glance widget with Debounce
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastWidgetUpdateTime > 1000) {
+            lastWidgetUpdateTime = currentTime
+            Log.d("PC_WIDGET_DEBUG", "Сервис: Отправляю интент обновления для IP: $ip, время: $currentTime")
+            val widgetIntent = Intent("com.example.pc.ACTION_STATS_UPDATE").apply {
+                component = ComponentName(this@PCForegroundService, PCGlanceWidgetReceiver::class.java)
+                putExtra("DEVICE_IP", ip)
+                putExtra("DIRECT_STATS", statsJson)
+            }
+            sendBroadcast(widgetIntent)
+        }
     }
 
     private fun updateNotification() {
@@ -341,6 +376,7 @@ class PCForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        serviceScope.cancel()
         connections.values.forEach { it.disconnect() }
         connections.clear()
         mediaSessions.values.forEach { 

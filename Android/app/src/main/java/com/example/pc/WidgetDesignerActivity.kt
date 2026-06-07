@@ -13,6 +13,8 @@ import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.cardview.widget.CardView
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 class WidgetDesignerActivity : BaseActivity() {
@@ -256,7 +258,14 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     private fun createWidgetView(config: WidgetConfig): View {
-        val view = WidgetFactory.create(config, this)
+        val view = WidgetFactory.create(
+            config = config,
+            context = this,
+            isWidget = true,
+            onVibrate = { vibrate() },
+            onVolumeChange = { name, vol -> sendMixerVolume(name, vol) },
+            onMediaCommand = { cmd -> sendMediaCommand(cmd) }
+        )
         
         val card = CardView(this).apply {
             radius = 12f * resources.displayMetrics.density
@@ -277,6 +286,10 @@ class WidgetDesignerActivity : BaseActivity() {
         }
         
         return card
+    }
+
+    private fun sendMediaCommand(cmd: String) {
+        webSocketManager?.sendCommand("media_command", mapOf("cmd" to cmd))
     }
 
     private fun showWidgetSettingsDialog(config: WidgetConfig) {
@@ -425,7 +438,7 @@ class WidgetDesignerActivity : BaseActivity() {
 
     private fun showAddWidgetDialog() {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
-        val excludedTypes = listOf(WidgetType.MEDIA_PLAYER, WidgetType.ACTION_BUTTON)
+        val excludedTypes = listOf(WidgetType.ACTION_BUTTON)
         val types = WidgetType.entries.filter { it !in excludedTypes }.toTypedArray()
         
         val names = types.map { type ->
@@ -439,6 +452,8 @@ class WidgetDesignerActivity : BaseActivity() {
                     WidgetType.COOLING -> "Охлаждение"
                     WidgetType.TOP_PROCESSES -> "Топ процессов"
                     WidgetType.CONTROLS -> "Управление"
+                    WidgetType.MEDIA_PLAYER -> "Медиаплеер"
+                    WidgetType.AUDIO_MIXER -> "Микшер"
                     else -> type.name
                 }
             } else {
@@ -450,10 +465,11 @@ class WidgetDesignerActivity : BaseActivity() {
             .setTitle(if (isRussian) "Добавить элемент" else "Add Element")
             .setItems(names) { _, i ->
                 val type = types[i]
-                val newConfig = if (type == WidgetType.CONTROLS) {
-                    WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
-                } else {
-                    WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
+                val newConfig = when (type) {
+                    WidgetType.CONTROLS -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
+                    WidgetType.MEDIA_PLAYER -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
+                    WidgetType.AUDIO_MIXER -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
+                    else -> WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
                 }
                 currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
                 refreshWidgets()
@@ -484,7 +500,9 @@ class WidgetDesignerActivity : BaseActivity() {
                 .putString("LAYOUT_JSON", layoutJson)
                 .apply()
 
-            PCAppWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId)
+            MainScope().launch {
+                PCGlanceWidget().update(this@WidgetDesignerActivity, androidx.glance.appwidget.GlanceAppWidgetManager(this@WidgetDesignerActivity).getGlanceIdBy(appWidgetId))
+            }
 
             val resultValue = Intent().apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
@@ -493,7 +511,7 @@ class WidgetDesignerActivity : BaseActivity() {
             finish()
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && appWidgetManager.isRequestPinAppWidgetSupported) {
             // Case 2: Request Pin from inside the app
-            val myProvider = ComponentName(this, PCAppWidgetProvider::class.java)
+            val myProvider = ComponentName(this, PCGlanceWidgetReceiver::class.java)
             
             // This is the extra data that will be received by onReceive when the widget is pinned
             val bundle = Bundle().apply {
@@ -501,7 +519,7 @@ class WidgetDesignerActivity : BaseActivity() {
                 putString("LAYOUT_JSON", layoutJson)
             }
             
-            val intent = Intent(this, PCAppWidgetProvider::class.java).apply {
+            val intent = Intent(this, PCGlanceWidgetReceiver::class.java).apply {
                 action = "com.example.pc.WIDGET_PINNED_SUCCESS"
                 putExtras(bundle)
             }
