@@ -9,39 +9,38 @@ import pcpulse.system.SystemMonitor;
 import pcpulse.worker.WorkerManager;
 
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ServerApp {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public static void main(String[] args) {
-        SystemMonitor systemMonitor = new SystemMonitor();
-        WorkerManager workerManager = new WorkerManager();
-        AuthManager authManager = new AuthManager();
-        
-        workerManager.start();
+        SystemMonitor monitor = new SystemMonitor();
+        WorkerManager worker = new WorkerManager();
+        AuthManager auth = new AuthManager();
 
-        WebServer webServer = new WebServer(workerManager, authManager);
+        worker.start();
+
+        WebServer server = new WebServer(worker, auth);
 
         TrayAndGUI gui = new TrayAndGUI(
-            systemMonitor.getLocalIp(), 
-            authManager, 
-            workerManager::stop, 
-            webServer::disconnectUnauthorized
+            monitor.getLocalIp(),
+            auth,
+            worker::stop,
+            server::disconnectUnauthorized
         );
         gui.init();
 
-        webServer.start(5000);
+        server.start(5000);
 
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-        scheduler.scheduleAtFixedRate(() -> {
+        // раз в 500мс собираем состояние и раздаём по вебсокетам
+        Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             try {
-                ObjectNode latestWorkerState = workerManager.getLatestState();
-                ObjectNode fullState = systemMonitor.buildFullState(latestWorkerState);
-                String jsonStr = mapper.writeValueAsString(fullState);
-                webServer.broadcast(jsonStr);
-            } catch (Exception e) {
+                ObjectNode ws = worker.getLatestState();
+                ObjectNode full = monitor.buildFullState(ws);
+                server.broadcast(mapper.writeValueAsString(full));
+            } catch (Exception ignored) {
+                // если один тик упал — ничего, следующий подхватит
             }
         }, 0, 500, TimeUnit.MILLISECONDS);
     }

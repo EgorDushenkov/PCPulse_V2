@@ -10,7 +10,7 @@ try:
 except:
     pass
 
-# Force UTF-8 encoding for pipe communication with Java server
+# без этого кириллица через pipe с Java ломается
 if sys.stdout:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 if sys.stdin:
@@ -37,20 +37,26 @@ from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessi
 import asyncio
 import clr
 
+LOG = "worker_debug.log"
+
+def _log(msg):
+    with open(LOG, "a") as f:
+        f.write(msg + "\n")
+
 def get_dll_path():
     if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
+        base = sys._MEIPASS
     else:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_path, "OpenHardwareMonitorLib.dll")
+        base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "OpenHardwareMonitorLib.dll")
 
-ohm_available = False
+ohm_ok = False
 try:
     clr.AddReference(get_dll_path())
     # pyrefly: ignore [missing-import]
     from OpenHardwareMonitor.Hardware import Computer
-    ohm_available = True
-except Exception as e:
+    ohm_ok = True
+except Exception:
     pass
 
 state = {
@@ -66,7 +72,7 @@ state = {
     "running_apps": []
 }
 
-def get_icon_as_base64(path):
+def extract_icon(path):
     try:
         path = path.strip('"')
         large, small = win32gui.ExtractIconEx(path, 0)
@@ -79,8 +85,8 @@ def get_icon_as_base64(path):
         hdc_mem = hdc.CreateCompatibleDC()
         hdc_mem.SelectObject(hbmp)
         hdc_mem.DrawIcon((0, 0), hicon)
-        bmpinfo = hbmp.GetInfo()
         bmpstr = hbmp.GetBitmapBits(True)
+        # BGRA → RGBA, win32 отдаёт в таком порядке
         img = Image.frombuffer('RGBA', (32, 32), bmpstr, 'raw', 'BGRA', 0, 1)
         win32gui.DestroyIcon(hicon)
         for h in large[1:]: win32gui.DestroyIcon(h)
@@ -89,15 +95,15 @@ def get_icon_as_base64(path):
         img.save(buf, format="PNG")
         return buf.getvalue()
     except Exception as e:
-        with open("worker_debug.log", "a") as f: f.write(f"Icon error: {e}\n")
+        _log(f"Icon error: {e}")
         return None
 
 cmd_queue = queue.Queue()
 
-def hw_thread():
+def hw_loop():
     pythoncom.CoInitialize()
     computer = None
-    if ohm_available:
+    if ohm_ok:
         try:
             computer = Computer()
             computer.CPUEnabled = True
@@ -110,168 +116,172 @@ def hw_thread():
 
     while True:
         try:
-            new_gpu = []
+            gpus = []
             for g in GPUtil.getGPUs():
-                new_gpu.append({
+                gpus.append({
                     "name": g.name,
                     "load": round(g.load * 100),
                     "temp": g.temperature,
                     "mem_p": round(g.memoryUtil * 100)
                 })
-            state["gpu"] = new_gpu
+            state["gpu"] = gpus
 
             if computer:
-                new_fans = []
-                cpu_clocks = []
+                fans = []
+                clocks = []
                 for hw in computer.Hardware:
                     hw.Update()
                     for item in [hw] + list(hw.SubHardware):
                         item.Update()
-                        for sensor in item.Sensors:
-                            name = str(sensor.Name)
-                            val = sensor.Value
+                        for s in item.Sensors:
+                            name = str(s.Name)
+                            val = s.Value
                             if val is None: continue
-                            stype = str(sensor.SensorType)
+                            stype = str(s.SensorType)
                             if stype == 'Clock' and 'CPU Core #' in name:
-                                cpu_clocks.append(val)
+                                clocks.append(val)
                             if stype == 'Temperature' and 'CPU Package' in name:
                                 state["cpu_temp"] = round(val, 1)
                             if stype == 'Fan':
-                                new_fans.append({"name": f"{hw.Name} {name}", "rpm": int(val)})
-                if cpu_clocks:
-                    state["cpu_freq"] = round(sum(cpu_clocks) / len(cpu_clocks))
-                state["fans"] = new_fans
+                                fans.append({"name": f"{hw.Name} {name}", "rpm": int(val)})
+                if clocks:
+                    state["cpu_freq"] = round(sum(clocks) / len(clocks))
+                state["fans"] = fans
         except:
             pass
         time.sleep(2.0)
 
-def audio_app_thread():
+def _get_speaker_vol():
+    """Хелпер: получить IAudioEndpointVolume для динамиков."""
+    dev = AudioUtilities.GetSpeakers()
+    if dev and hasattr(dev, 'Activate'):
+        return cast(dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None), POINTER(IAudioEndpointVolume))
+    return None
+
+def _get_mic_vol():
+    """Хелпер: получить IAudioEndpointVolume для микрофона."""
+    dev = AudioUtilities.GetMicrophone()
+    if dev and hasattr(dev, 'Activate'):
+        return cast(dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None), POINTER(IAudioEndpointVolume))
+    return None
+
+def audio_loop():
     pythoncom.CoInitialize()
     while True:
         try:
             while not cmd_queue.empty():
                 cmd = cmd_queue.get_nowait()
                 action = cmd.get("action")
-                if action in ["set_volume", "set_master_volume"]:
-                    devs = AudioUtilities.GetSpeakers()
-                    if devs and hasattr(devs, 'Activate'):
-                        vol_ctl = cast(devs.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None), POINTER(IAudioEndpointVolume))
-                        vol_ctl.SetMasterVolumeLevelScalar(float(cmd.get("vol", cmd.get("val", 0))) / 100.0, None)
-                elif action in ["mute_mic", "set_mic_mute"]:
-                    m_devs = AudioUtilities.GetMicrophone()
-                    if m_devs and hasattr(m_devs, 'Activate'):
-                        mic_ctl = cast(m_devs.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None), POINTER(IAudioEndpointVolume))
-                        mute_val = cmd.get("mute", 0)
-                        is_muted = 1 if (mute_val == 1 or str(mute_val).lower() == "true") else 0
-                        mic_ctl.SetMute(is_muted, None)
-                elif action in ["set_mixer", "set_mixer_volume"]:
+
+                if action in ("set_volume", "set_master_volume"):
+                    vol = _get_speaker_vol()
+                    if vol:
+                        vol.SetMasterVolumeLevelScalar(float(cmd.get("vol", cmd.get("val", 0))) / 100.0, None)
+
+                elif action in ("mute_mic", "set_mic_mute"):
+                    mic = _get_mic_vol()
+                    if mic:
+                        raw = cmd.get("mute", 0)
+                        mic.SetMute(1 if (raw == 1 or str(raw).lower() == "true") else 0, None)
+
+                elif action in ("set_mixer", "set_mixer_volume"):
                     try:
                         sessions = AudioUtilities.GetAllSessions()
-                        app_name = str(cmd.get("app", "")).lower()
-                        volume_level = cmd.get("vol") if cmd.get("vol") is not None else cmd.get("val", 0)
-                        with open("worker_debug.log", "a") as f:
-                            f.write(f"[set_mixer] Looking for app: '{app_name}', target vol: {volume_level}\n")
-                            f.write(f"[set_mixer] Available sessions: {[s.Process.name() if s.Process else 'None' for s in sessions]}\n")
+                        app = str(cmd.get("app", "")).lower()
+                        vol_level = cmd.get("vol") if cmd.get("vol") is not None else cmd.get("val", 0)
+                        _log(f"[mixer] ищу '{app}', target vol: {vol_level}")
                         found = False
                         for s in sessions:
                             if s.Process and s.Process.name():
-                                proc_name = s.Process.name().lower()
-                                if proc_name == app_name:
-                                    v_ctl = s._ctl.QueryInterface(ISimpleAudioVolume)
-                                    v_ctl.SetMasterVolume(float(volume_level) / 100.0, None)
+                                pname = s.Process.name().lower()
+                                if pname == app:
+                                    ctl = s._ctl.QueryInterface(ISimpleAudioVolume)
+                                    ctl.SetMasterVolume(float(vol_level) / 100.0, None)
                                     found = True
-                                    with open("worker_debug.log", "a") as f:
-                                        f.write(f"[set_mixer] SUCCESS: Set '{proc_name}' volume to {volume_level}\n")
+                                    _log(f"[mixer] ок: '{pname}' → {vol_level}")
                         if not found:
-                            with open("worker_debug.log", "a") as f:
-                                f.write(f"[set_mixer] FAILED: No session matched '{app_name}'\n")
+                            _log(f"[mixer] не нашёл сессию '{app}'")
                     except Exception as e:
-                        with open("worker_debug.log", "a") as f: f.write(f"Set mixer error: {e}\n")
-                elif action == "media_command" or action == "media":
+                        _log(f"[mixer] ошибка: {e}")
+
+                elif action in ("media_command", "media"):
                     mc = cmd.get("cmd")
                     if mc == 'play_pause': pyautogui.press('playpause')
                     elif mc == 'next': pyautogui.press('nexttrack')
                     elif mc == 'prev': pyautogui.press('prevtrack')
+
                 elif action == "minimize_app":
                     hwnd = win32gui.GetForegroundWindow()
                     if hwnd:
                         win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+
                 elif action == "close_app":
-                    app_name = cmd.get("name", "").lower()
+                    target = cmd.get("name", "").lower()
                     for p in psutil.process_iter(['name']):
                         try:
-                            if p.info['name'].lower() == app_name: p.kill()
+                            if p.info['name'].lower() == target: p.kill()
                         except: pass
+
                 elif action == "run":
                     run_path = cmd.get("path")
-                    with open("worker_debug.log", "a") as f:
-                        f.write(f"[run] Attempting to open: '{run_path}'\n")
-                        f.write(f"[run] Path exists: {os.path.exists(run_path) if run_path else 'path is None'}\n")
+                    _log(f"[run] открываю: '{run_path}' (exists={os.path.exists(run_path) if run_path else '?'})")
                     try:
                         os.startfile(run_path)
-                        with open("worker_debug.log", "a") as f:
-                            f.write(f"[run] SUCCESS: startfile called\n")
+                        _log("[run] ок")
                     except Exception as e:
-                        with open("worker_debug.log", "a") as f:
-                            f.write(f"[run] ERROR: {e}\n")
+                        _log(f"[run] упало: {e}")
+
                 elif action == "shutdown":
-                    with open("worker_debug.log", "a") as f: f.write("[power] Shutdown command received\n")
+                    _log("[power] shutdown")
                     os.system("shutdown /s /t 1")
                 elif action == "sleep":
-                    with open("worker_debug.log", "a") as f: f.write("[power] Sleep command received\n")
+                    _log("[power] sleep")
                     os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")
                 elif action == "restart":
-                    with open("worker_debug.log", "a") as f: f.write("[power] Restart command received\n")
+                    _log("[power] restart")
                     os.system("shutdown /r /t 1")
+
                 elif action == "get_icon":
                     try:
-                        icon_path = cmd.get("path", "")
                         req_id = cmd.get("req_id", "")
-                        icon_bytes = get_icon_as_base64(icon_path)
-                        if icon_bytes:
-                            b64 = base64.b64encode(icon_bytes).decode('utf-8')
-                            resp = json.dumps({"type": "icon_response", "req_id": req_id, "data": b64})
-                            sys.stdout.write(resp + "\n")
-                            sys.stdout.flush()
-                        else:
-                            resp = json.dumps({"type": "icon_response", "req_id": req_id, "data": ""})
-                            sys.stdout.write(resp + "\n")
-                            sys.stdout.flush()
+                        icon = extract_icon(cmd.get("path", ""))
+                        b64 = base64.b64encode(icon).decode('utf-8') if icon else ""
+                        resp = json.dumps({"type": "icon_response", "req_id": req_id, "data": b64})
+                        sys.stdout.write(resp + "\n")
+                        sys.stdout.flush()
                     except Exception as e:
-                        with open("worker_debug.log", "a") as f: f.write(f"Icon action error: {e}\n")
+                        _log(f"[icon] action error: {e}")
+
+            # --- опрос текущего состояния аудио ---
+            try:
+                vol = _get_speaker_vol()
+                if vol:
+                    state["volume"] = round(vol.GetMasterVolumeLevelScalar() * 100)
+            except Exception as e:
+                _log(f"[audio] speakers: {e}")
 
             try:
-                devices = AudioUtilities.GetSpeakers()
-                if devices and hasattr(devices, 'Activate'):
-                    vol_obj = cast(devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None), POINTER(IAudioEndpointVolume))
-                    state["volume"] = round(vol_obj.GetMasterVolumeLevelScalar() * 100)
+                mic = _get_mic_vol()
+                if mic:
+                    state["mic_muted"] = bool(mic.GetMute())
             except Exception as e:
-                with open("worker_debug.log", "a") as f: f.write(f"Speakers error: {e}\n")
-            
-            try:
-                mic_devs = AudioUtilities.GetMicrophone()
-                if mic_devs and hasattr(mic_devs, 'Activate'):
-                    m_vol = cast(mic_devs.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None), POINTER(IAudioEndpointVolume))
-                    state["mic_muted"] = bool(m_vol.GetMute())
-            except Exception as e:
-                with open("worker_debug.log", "a") as f: f.write(f"Mic error: {e}\n")
+                #на некоторых машинах GetMicrophone() вообще None — нужен fallback
+                _log(f"[audio] mic: {e}")
 
             try:
                 sessions = AudioUtilities.GetAllSessions()
-                new_sessions = []
-                for s in sessions:
-                    if s.Process and s.Process.name():
-                        v_ctl = s._ctl.QueryInterface(ISimpleAudioVolume)
-                        new_sessions.append({"name": s.Process.name(), "volume": round(v_ctl.GetMasterVolume() * 100)})
-                state["audio_sessions"] = new_sessions
-            except Exception as se:
-                with open("worker_debug.log", "a") as f: f.write(f"Sessions error: {se}\n")
+                state["audio_sessions"] = [
+                    {"name": s.Process.name(), "volume": round(s._ctl.QueryInterface(ISimpleAudioVolume).GetMasterVolume() * 100)}
+                    for s in sessions if s.Process and s.Process.name()
+                ]
+            except Exception as e:
+                _log(f"[audio] sessions: {e}")
 
-            running = []
+            running = set()
             for p in psutil.process_iter(['name']):
-                try: running.append(p.info['name'].lower())
+                try: running.add(p.info['name'].lower())
                 except: pass
-            state["running_apps"] = list(set(running))
+            state["running_apps"] = list(running)
 
             hwnd = win32gui.GetForegroundWindow()
             if hwnd:
@@ -282,32 +292,32 @@ def audio_app_thread():
             else:
                 state["active_app"] = ""
         except Exception as e:
-            sys.stderr.write(f"Error in audio thread: {e}\n")
+            sys.stderr.write(f"audio_loop error: {e}\n")
         time.sleep(0.5)
 
-async def media_thread():
+async def media_loop():
     pythoncom.CoInitialize()
     while True:
         try:
-            sessions = await SessionManager.request_async()
-            current_session = sessions.get_current_session()
-            if current_session:
-                props = await current_session.try_get_media_properties_async()
-                info = current_session.get_playback_info()
+            mgr = await SessionManager.request_async()
+            session = mgr.get_current_session()
+            if session:
+                props = await session.try_get_media_properties_async()
+                info = session.get_playback_info()
                 state["media"] = {"title": props.title, "artist": props.artist, "status": int(info.playback_status)}
             else:
                 state["media"] = None
         except Exception as e:
-            sys.stderr.write(f"Error in media thread: {e}\n")
+            sys.stderr.write(f"media_loop error: {e}\n")
             state["media"] = None
         await asyncio.sleep(1.0)
 
-def start_async_loop():
+def run_async_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(media_thread())
+    loop.run_until_complete(media_loop())
 
-def print_state_loop():
+def emit_state():
     while True:
         try:
             if sys.stdout is None:
@@ -315,15 +325,14 @@ def print_state_loop():
             sys.stdout.write(json.dumps(state) + "\n")
             sys.stdout.flush()
         except Exception as e:
-            with open("worker_debug.log", "a") as f: f.write(f"Stdout error: {e}\n")
+            _log(f"[emit] stdout error: {e}")
         time.sleep(1.0)
 
 if __name__ == "__main__":
-    with open("worker_debug.log", "w") as f: f.write("Worker started\n")
-    threading.Thread(target=hw_thread, daemon=True).start()
-    threading.Thread(target=audio_app_thread, daemon=True).start()
-    threading.Thread(target=start_async_loop, daemon=True).start()
-    threading.Thread(target=print_state_loop, daemon=True).start()
+    with open(LOG, "w") as f: f.write("Worker started\n")
+
+    for target in (hw_loop, audio_loop, run_async_loop, emit_state):
+        threading.Thread(target=target, daemon=True).start()
 
     while True:
         try:
@@ -333,9 +342,8 @@ if __name__ == "__main__":
             if not line:
                 time.sleep(1)
                 continue
-            with open("worker_debug.log", "a") as f: f.write(f"[stdin] Raw command: {line.strip()}\n")
-            cmd = json.loads(line)
-            cmd_queue.put(cmd)
+            _log(f"[stdin] {line.strip()}")
+            cmd_queue.put(json.loads(line))
         except Exception as e:
-            with open("worker_debug.log", "a") as f: f.write(f"Stdin error: {e}\n")
+            _log(f"[stdin] error: {e}")
             time.sleep(1)

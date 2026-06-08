@@ -1,35 +1,26 @@
-# ============================================
-#  PCPulse — Windows/.gitignore
-# ============================================
+
 ../Android/
-# ── Встроенная JDK (≈327 MB) ────────────────
 jdk-21.0.3+9/
-
-# ── Apache Maven (≈10 MB) ───────────────────
 apache-maven-3.9.6/
-
-# ── Maven build output (≈12 MB) ─────────────
 JavaServer/target/
 
-# ── Python cache ────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 
-# ── Исполняемые / бинарные файлы ────────────
 *.exe
 *.dll
 !OpenHardwareMonitorLib.dll
 *.so
 *.dylib
 
-# ── Логи ────────────────────────────────────
+
 *.log
 *.log.*
 logs/
 
-# ── Архивы сборки ───────────────────────────
+
 *.jar
 *.war
 *.ear
@@ -37,13 +28,13 @@ logs/
 *.tar.gz
 *.rar
 
-# ── Виртуальные окружения Python ────────────
+
 venv/
 .venv/
 env/
 .env/
 
-# ── IDE / редакторы ─────────────────────────
+
 .idea/
 .vscode/
 *.swp
@@ -53,13 +44,13 @@ env/
 .classpath
 .settings/
 
-# ── ОС-мусор ───────────────────────────────
+
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 .DS_Store
 
-# ── PyInstaller (если используется) ─────────
+
 build/
 dist/
 *.spec

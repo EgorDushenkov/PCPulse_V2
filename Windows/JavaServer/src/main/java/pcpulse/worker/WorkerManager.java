@@ -9,107 +9,96 @@ import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
 public class WorkerManager {
     private static final ObjectMapper mapper = new ObjectMapper();
-    private ObjectNode latestWorkerState = mapper.createObjectNode();
-    private Process workerProcess;
-    private BufferedWriter workerWriter;
-    private final ConcurrentHashMap<String, CompletableFuture<byte[]>> iconRequests = new ConcurrentHashMap<>();
-
-    public WorkerManager() {
-    }
+    private ObjectNode lastState = mapper.createObjectNode();
+    private Process proc;
+    private BufferedWriter writer;
+    private final ConcurrentHashMap<String, CompletableFuture<byte[]>> iconReqs = new ConcurrentHashMap<>();
 
     public void start() {
         try {
-            ProcessBuilder pb = new ProcessBuilder("worker.exe");
-            workerProcess = pb.start();
-            workerWriter = new BufferedWriter(new OutputStreamWriter(workerProcess.getOutputStream(), StandardCharsets.UTF_8));
+            proc = new ProcessBuilder("worker.exe").start();
+            writer = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream(), StandardCharsets.UTF_8));
 
-            Thread readerThread = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(workerProcess.getInputStream(), StandardCharsets.UTF_8))) {
+            Thread reader = new Thread(() -> {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;
-                    while ((line = reader.readLine()) != null) {
+                    while ((line = br.readLine()) != null) {
                         try {
                             JsonNode node = mapper.readTree(line);
-                            if (node.isObject()) {
-                                if (node.has("type") && "icon_response".equals(node.get("type").asText())) {
-                                    String reqId = node.get("req_id").asText();
-                                    String data = node.get("data").asText();
-                                    CompletableFuture<byte[]> future = iconRequests.remove(reqId);
-                                    if (future != null) {
-                                        if (data.isEmpty()) {
-                                            future.complete(null);
-                                        } else {
-                                            future.complete(java.util.Base64.getDecoder().decode(data));
-                                        }
-                                    }
-                                } else {
-                                    synchronized (latestWorkerState) {
-                                        latestWorkerState = (ObjectNode) node;
-                                    }
+                            if (!node.isObject()) continue;
+
+                            if (node.has("type") && "icon_response".equals(node.get("type").asText())) {
+                                String reqId = node.get("req_id").asText();
+                                String data = node.get("data").asText();
+                                CompletableFuture<byte[]> future = iconReqs.remove(reqId);
+                                if (future != null) {
+                                    future.complete(data.isEmpty() ? null : java.util.Base64.getDecoder().decode(data));
+                                }
+                            } else {
+                                synchronized (lastState) {
+                                    lastState = (ObjectNode) node;
                                 }
                             }
                         } catch (Exception ignored) {}
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    System.err.println("[Worker] stdout reader упал: " + e.getMessage());
                 }
             });
-            readerThread.setDaemon(true);
-            readerThread.start();
+            reader.setDaemon(true);
+            reader.start();
 
-            // Drain stderr separately to prevent it from blocking the process
-            Thread stderrThread = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(workerProcess.getErrorStream(), StandardCharsets.UTF_8))) {
-                    while (reader.readLine() != null) { /* discard */ }
+            // stderr надо дренить, иначе буфер забьётся и worker зависнет
+            Thread errDrain = new Thread(() -> {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(proc.getErrorStream(), StandardCharsets.UTF_8))) {
+                    while (br.readLine() != null) { /* /dev/null */ }
                 } catch (Exception ignored) {}
             });
-            stderrThread.setDaemon(true);
-            stderrThread.start();
+            errDrain.setDaemon(true);
+            errDrain.start();
         } catch (Exception e) {
+            //нормально обработать — сейчас если worker.exe нет, просто молча ляжем
             e.printStackTrace();
         }
     }
 
     public void stop() {
-        if (workerProcess != null) {
-            workerProcess.destroyForcibly();
-        }
+        if (proc != null) proc.destroyForcibly();
     }
 
-    public void sendCommand(String jsonCommand) {
-        if (workerWriter != null) {
-            try {
-                workerWriter.write(jsonCommand + "\n");
-                workerWriter.flush();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    public void sendCommand(String json) {
+        if (writer == null) return;
+        try {
+            writer.write(json + "\n");
+            writer.flush();
+        } catch (Exception e) {
+            System.err.println("[Worker] Не смог отправить команду: " + e.getMessage());
         }
     }
 
     public ObjectNode getLatestState() {
-        synchronized (latestWorkerState) {
-            return latestWorkerState.deepCopy();
+        synchronized (lastState) {
+            return lastState.deepCopy();
         }
     }
 
     public CompletableFuture<byte[]> requestIcon(String path) {
         CompletableFuture<byte[]> future = new CompletableFuture<>();
         String reqId = UUID.randomUUID().toString();
-        iconRequests.put(reqId, future);
-        
+        iconReqs.put(reqId, future);
+
         ObjectNode cmd = mapper.createObjectNode();
         cmd.put("action", "get_icon");
         cmd.put("path", path);
         cmd.put("req_id", reqId);
         sendCommand(cmd.toString());
-        
+
         return future;
     }
 }
