@@ -15,7 +15,6 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -154,50 +153,40 @@ class MainActivity : BaseActivity() {
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
         
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle(if (isRussian) "Добавить устройство" else "Add Device")
-        
-        // Create a layout with two input fields: IP and PIN
-        val layout = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(50, 30, 50, 10)
-        }
-        
-        val inputIp = EditText(this)
-        inputIp.hint = if (isRussian) "IP (например: 192.168.1.23)" else "IP (e.g. 192.168.1.23)"
-        inputIp.setSingleLine()
-        
-        val inputPin = EditText(this)
-        inputPin.hint = if (isRussian) "PIN-код (6 цифр)" else "PIN code (6 digits)"
-        inputPin.setSingleLine()
-        inputPin.inputType = android.text.InputType.TYPE_CLASS_NUMBER
-        
-        layout.addView(inputIp)
-        layout.addView(inputPin)
-        builder.setView(layout)
-        
-        builder.setPositiveButton(if (isRussian) "Подключить" else "Connect") { _, _ ->
-            vibrate()
-            val ip = inputIp.text.toString().trim()
-            val pin = inputPin.text.toString().trim()
-            
-            if (ip.isEmpty() || pin.isEmpty()) {
-                Toast.makeText(this, 
-                    if (isRussian) "Введите IP и PIN-код" else "Enter IP and PIN code", 
-                    Toast.LENGTH_SHORT).show()
-                return@setPositiveButton
-            }
-            
-            if (devices.any { it.ipAddress == ip }) {
-                Toast.makeText(this, 
-                    if (isRussian) "Устройство уже добавлено" else "Device already added", 
-                    Toast.LENGTH_SHORT).show()
-                return@setPositiveButton
-            }
-            
-            // Perform pairing request in background
-            Thread {
-                try {
+        val view = layoutInflater.inflate(R.layout.dialog_add_device, null)
+        val inputIp = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.inputIp)
+        val inputPin = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.inputPin)
+        val ipLayout = view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.ipInputLayout)
+        val pinLayout = view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.pinInputLayout)
+
+        ipLayout.hint = if (isRussian) "IP (например: 192.168.1.23)" else "IP (e.g. 192.168.1.23)"
+        pinLayout.hint = if (isRussian) "PIN-код (6 цифр)" else "PIN code (6 digits)"
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(if (isRussian) "Добавить устройство" else "Add Device")
+            .setView(view)
+            .setPositiveButton(if (isRussian) "Подключить" else "Connect") { _, _ ->
+                vibrate()
+                val ip = inputIp.text.toString().trim()
+                val pin = inputPin.text.toString().trim()
+                
+                if (ip.isEmpty() || pin.isEmpty()) {
+                    Toast.makeText(this, 
+                        if (isRussian) "Введите IP и PIN-код" else "Enter IP and PIN code", 
+                        Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                
+                if (devices.any { it.ipAddress == ip }) {
+                    Toast.makeText(this, 
+                        if (isRussian) "Устройство уже добавлено" else "Device already added", 
+                        Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                
+                // Perform pairing request in background
+                Thread {
+                    try {
                     val client = OkHttpClient.Builder()
                         .connectTimeout(5, TimeUnit.SECONDS)
                         .readTimeout(5, TimeUnit.SECONDS)
@@ -256,15 +245,15 @@ class MainActivity : BaseActivity() {
                 }
             }.start()
         }
-        builder.setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
-        builder.show()
+        .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
+        .show()
     }
 
     private fun showDeleteDeviceDialog(device: Device) {
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
         
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(if (isRussian) "Удалить устройство?" else "Delete device?")
             .setMessage(if (isRussian) "Вы уверены?" else "Are you sure?")
             .setPositiveButton(if (isRussian) "Удалить" else "Delete") { _, _ ->

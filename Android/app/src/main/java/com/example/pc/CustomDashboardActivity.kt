@@ -18,9 +18,9 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.cardview.widget.CardView
 import kotlin.math.roundToInt
 
@@ -189,7 +189,7 @@ class CustomDashboardActivity : BaseActivity() {
 
     private fun showDeleteDialog(widgetView: View) {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(if (isRussian) "Удалить?" else "Delete?")
             .setMessage(if (isRussian) "Удалить виджет?" else "Delete widget?")
             .setPositiveButton(if (isRussian) "Да" else "Yes") { _, _ ->
@@ -228,7 +228,7 @@ class CustomDashboardActivity : BaseActivity() {
             }
         }.toTypedArray()
 
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(if (isRussian) "Добавить виджет" else "Add Widget")
             .setItems(names) { _, which ->
                 vibrate()
@@ -252,42 +252,27 @@ class CustomDashboardActivity : BaseActivity() {
 
     private fun showWidgetConfigDialog(type: WidgetType, onSave: (WidgetConfig) -> Unit) {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 32, 48, 32)
-        }
+        val view = layoutInflater.inflate(R.layout.dialog_theme_selector, null)
+        val rgTheme = view.findViewById<RadioGroup>(R.id.rgTheme)
+        val container = view as LinearLayout
         
-        val themeLabel = TextView(this).apply { 
-            text = if (isRussian) "Тема виджета:" else "Widget Theme:"
-            setPadding(0, 0, 0, 16)
-        }
-        val themeOptions = if (isRussian) {
-            arrayOf("ПО УМОЛЧАНИЮ", "ФИОЛЕТОВАЯ", "БИРЮЗОВАЯ", "ОРАНЖЕВАЯ", "ЗЕЛЕНАЯ")
-        } else {
-            arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
-        }
-        val themeSpinner = android.widget.Spinner(this).apply {
-            adapter = android.widget.ArrayAdapter(this@CustomDashboardActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
-        }
-        
-        layout.addView(themeLabel)
-        layout.addView(themeSpinner)
+        view.findViewById<TextView>(R.id.dialogTitle).text = if (isRussian) "Тема виджета:" else "Widget Theme:"
 
         var checkDefault: CheckBox? = null
         if (type == WidgetType.MEDIA_PLAYER) {
             val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
             val defaultMediaIp = prefs.getString("DEFAULT_MEDIA_IP", "")
-            checkDefault = CheckBox(this).apply {
+            checkDefault = com.google.android.material.checkbox.MaterialCheckBox(this).apply {
                 text = if (isRussian) "Использовать по умолчанию для шторки" else "Use as default for media shade"
                 isChecked = deviceIp == defaultMediaIp
                 setPadding(0, 24, 0, 0)
             }
-            layout.addView(checkDefault)
+            container.addView(checkDefault)
         }
 
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(if (isRussian) "Настройка виджета" else "Widget Settings")
-            .setView(layout)
+            .setView(view)
             .setPositiveButton(if (isRussian) "Добавить" else "Add") { _, _ ->
                 vibrate()
                 
@@ -299,9 +284,12 @@ class CustomDashboardActivity : BaseActivity() {
                     PCForegroundService.refresh(this@CustomDashboardActivity)
                 }
 
-                val selectedThemeIndex = themeSpinner.selectedItemPosition
-                val selectedTheme = if (selectedThemeIndex == 0) null else {
-                    arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")[selectedThemeIndex]
+                val selectedTheme = when (rgTheme.checkedRadioButtonId) {
+                    R.id.rbTurquoise -> "TURQUOISE"
+                    R.id.rbOrange -> "ORANGE"
+                    R.id.rbGreen -> "GREEN"
+                    R.id.rbPurple -> "PURPLE"
+                    else -> null
                 }
 
                 val config = when(type) {
@@ -317,43 +305,26 @@ class CustomDashboardActivity : BaseActivity() {
 
     private fun showActionButtonConfigDialog(onSave: (String, String, Boolean, String?) -> Unit) {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 32, 48, 32)
-        }
-        val editLabel = EditText(this).apply { hint = if (isRussian) "Название кнопки (например, Steam)" else "Button label (e.g. Steam)" }
-        val editPath = EditText(this).apply { hint = if (isRussian) "Путь к файлу или URL" else "File path or URL" }
-        val checkUseIcon = CheckBox(this).apply { 
-            text = if (isRussian) "Иконка вместо названия" else "Icon instead of label"
-            setPadding(0, 24, 0, 24)
-        }
+        val view = layoutInflater.inflate(R.layout.dialog_widget_settings, null)
         
-        val themeLabel = TextView(this).apply { text = if (isRussian) "Тема кнопки:" else "Button theme:" }
-        val themeOptions = if (isRussian) {
-            arrayOf("ПО УМОЛЧАНИЮ", "ФИОЛЕТОВАЯ", "БИРЮЗОВАЯ", "ОРАНЖЕВАЯ", "ЗЕЛЕНАЯ")
-        } else {
-            arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
-        }
-        val themeSpinner = android.widget.Spinner(this).apply {
-            adapter = android.widget.ArrayAdapter(this@CustomDashboardActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
-        }
+        val etLabel = view.findViewById<EditText>(R.id.etLabel)
+        val etAction = view.findViewById<EditText>(R.id.etAction)
+        val cbUseIcon = view.findViewById<CheckBox>(R.id.cbUseIcon)
+        val rgTheme = view.findViewById<RadioGroup>(R.id.rgTheme)
         
-        layout.addView(editLabel)
-        layout.addView(editPath)
-        layout.addView(checkUseIcon)
-        layout.addView(themeLabel)
-        layout.addView(themeSpinner)
-
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(if (isRussian) "Настройка кнопки" else "Button Settings")
-            .setView(layout)
+            .setView(view)
             .setPositiveButton(if (isRussian) "Добавить" else "Add") { _, _ ->
                 vibrate()
-                val selectedThemeIndex = themeSpinner.selectedItemPosition
-                val selectedTheme = if (selectedThemeIndex == 0) null else {
-                    arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")[selectedThemeIndex]
+                val selectedTheme = when (rgTheme.checkedRadioButtonId) {
+                    R.id.rbTurquoise -> "TURQUOISE"
+                    R.id.rbOrange -> "ORANGE"
+                    R.id.rbGreen -> "GREEN"
+                    R.id.rbPurple -> "PURPLE"
+                    else -> null
                 }
-                onSave(editLabel.text.toString(), editPath.text.toString(), checkUseIcon.isChecked, selectedTheme)
+                onSave(etLabel.text.toString(), etAction.text.toString(), cbUseIcon.isChecked, selectedTheme)
             }
             .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
             .show()

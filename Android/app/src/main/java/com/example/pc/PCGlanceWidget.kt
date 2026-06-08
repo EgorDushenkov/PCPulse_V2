@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.util.Log
 import android.view.View
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.*
@@ -33,6 +34,10 @@ import androidx.glance.appwidget.action.ActionCallback
 import com.google.gson.Gson
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.bumptech.glide.Glide
+import java.util.concurrent.TimeUnit
 
 class PCGlanceWidget : GlanceAppWidget() {
 
@@ -92,13 +97,19 @@ class PCGlanceWidget : GlanceAppWidget() {
             return
         }
 
+        // 1. Pixel-perfect background generated asynchronously
+        val fullBitmapState = produceState<Bitmap?>(initialValue = null, layout, stats, isOnline) {
+            value = withContext(Dispatchers.IO) {
+                renderLayoutToBitmap(context, layout, stats, isOnline)
+            }
+        }
+        val fullBitmap = fullBitmapState.value
+
         // Layout parameters
         val gridWidth = layout.gridWidth
         val gridHeight = layout.gridHeight
 
         Box(modifier = GlanceModifier.fillMaxSize().cornerRadius(16.dp)) {
-            // 1. Pixel-perfect background
-            val fullBitmap = renderLayoutToBitmap(context, layout, stats, isOnline)
             if (fullBitmap != null) {
                 Image(
                     provider = ImageProvider(fullBitmap),
@@ -250,7 +261,7 @@ class PCGlanceWidget : GlanceAppWidget() {
         }
     }
 
-    private fun renderLayoutToBitmap(context: Context, layout: DashboardLayout, stats: PCStats?, isOnline: Boolean): Bitmap? {
+    private suspend fun renderLayoutToBitmap(context: Context, layout: DashboardLayout, stats: PCStats?, isOnline: Boolean): Bitmap? {
         val density = context.resources.displayMetrics.density
         // Use a fixed virtual size for the bitmap to ensure consistency
         val cellPx = 200 // Higher resolution for better quality
@@ -268,6 +279,22 @@ class PCGlanceWidget : GlanceAppWidget() {
 
         layout.widgets.forEach { config ->
             val view = WidgetFactory.create(config, context, isWidget = true)
+            
+            // Handle Action Button icons synchronously for the widget bitmap
+            if (view is ActionButtonWidgetView && config.useIcon && !config.action.isNullOrEmpty()) {
+                val url = ActionButtonWidgetView.getIconUrl(context, config)
+                try {
+                    val iconBitmap = Glide.with(context.applicationContext)
+                        .asBitmap()
+                        .load(url)
+                        .submit()
+                        .get(3, TimeUnit.SECONDS)
+                    view.setIconBitmap(iconBitmap)
+                } catch (e: Exception) {
+                    Log.e("PC_WIDGET_DEBUG", "Failed to load icon for widget bitmap: $url", e)
+                }
+            }
+
             if (view is UpdatableWidget) {
                 if (isOnline && stats != null) {
                     view.updateData(stats)

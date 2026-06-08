@@ -14,7 +14,6 @@ import android.provider.MediaStore
 import android.util.Log
 import android.widget.ImageView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
 import okhttp3.ResponseBody
@@ -115,7 +114,7 @@ abstract class BaseActivity : AppCompatActivity() {
                                     if (bitmap != null) {
                                         val view = layoutInflater.inflate(R.layout.dialog_screenshot, null)
                                         view.findViewById<ImageView>(R.id.screenshotImage).setImageBitmap(bitmap)
-                                        AlertDialog.Builder(this@BaseActivity)
+                                        com.google.android.material.dialog.MaterialAlertDialogBuilder(this@BaseActivity)
                                             .setTitle(if (isRussian) "Скриншот ПК" else "PC Screenshot")
                                             .setView(view)
                                             .setPositiveButton(if (isRussian) "Закрыть" else "Close", null)
@@ -192,7 +191,7 @@ abstract class BaseActivity : AppCompatActivity() {
 
     private fun showPowerActionDialog(actionName: String, title: String, onConfirm: () -> Unit) {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(title)
             .setMessage(if (isRussian) "Вы уверены, что хотите $actionName ПК?" else "Are you sure you want to $actionName the PC?")
             .setPositiveButton(if (isRussian) "Да" else "Yes") { _, _ -> onConfirm() }

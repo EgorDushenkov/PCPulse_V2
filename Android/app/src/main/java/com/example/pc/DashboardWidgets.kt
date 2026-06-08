@@ -150,22 +150,21 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
         }
     }
 
+    fun setIconBitmap(bitmap: android.graphics.Bitmap?) {
+        if (bitmap != null) {
+            iconView.setImageBitmap(bitmap)
+            iconView.visibility = View.VISIBLE
+            button.text = ""
+        }
+    }
+
     private fun updateUI() {
         val cfg = config ?: return
         if (cfg.useIcon && !cfg.action.isNullOrEmpty()) {
             button.text = ""
             iconView.visibility = View.VISIBLE
             
-            val action = cfg.action ?: ""
-            val iconUrl = if (action.startsWith("http://") || action.startsWith("https://")) {
-                val host = Uri.parse(action).host ?: action
-                "https://www.google.com/s2/favicons?domain=$host&sz=128"
-            } else {
-                val prefs = context.getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
-                val deviceIp = cfg.deviceIp ?: prefs.getString("SERVER_IP", "192.168.1.100") ?: "192.168.1.100"
-                val encodedPath = Uri.encode(action)
-                "http://$deviceIp:5000/icon?path=$encodedPath"
-            }
+            val iconUrl = getIconUrl(context, cfg)
             
             Log.d("ActionButton", "Loading icon: $iconUrl")
 
@@ -185,6 +184,21 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
             try {
                 Glide.with(context.applicationContext).clear(iconView)
             } catch (e: Exception) {}
+        }
+    }
+
+    companion object {
+        fun getIconUrl(context: Context, cfg: WidgetConfig): String {
+            val action = cfg.action ?: ""
+            return if (action.startsWith("http://") || action.startsWith("https://")) {
+                val host = Uri.parse(action).host ?: action
+                "https://www.google.com/s2/favicons?domain=$host&sz=128"
+            } else {
+                val prefs = context.getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+                val deviceIp = cfg.deviceIp ?: prefs.getString("SERVER_IP", "192.168.1.100") ?: "192.168.1.100"
+                val encodedPath = Uri.encode(action)
+                "http://$deviceIp:5000/icon?path=$encodedPath"
+            }
         }
     }
 
