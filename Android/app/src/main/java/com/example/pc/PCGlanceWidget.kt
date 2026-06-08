@@ -202,6 +202,16 @@ class PCGlanceWidget : GlanceAppWidget() {
                                                 if (buttonsAtTop) Spacer(modifier = GlanceModifier.defaultWeight())
                                             }
                                         }
+                                    } else if (widget.type == WidgetType.ACTION_BUTTON) {
+                                        Box(modifier = GlanceModifier.fillMaxSize().clickable(
+                                            actionRunCallback<OptimisticWidgetAction>(
+                                                actionParametersOf(
+                                                    OptimisticWidgetAction.ipKey to deviceIp,
+                                                    OptimisticWidgetAction.actionTypeKey to "action_button",
+                                                    OptimisticWidgetAction.actionValueKey to (widget.action ?: "")
+                                                )
+                                            )
+                                        )) {}
                                     } else if (!widget.action.isNullOrEmpty()) {
                                         Box(modifier = GlanceModifier.fillMaxSize().clickable(
                                             createAction(context, deviceIp, "run", widget.action)
@@ -324,6 +334,7 @@ class OptimisticWidgetAction : ActionCallback {
                                 stats.copy(media = stats.media?.copy(status = newStatus))
                             } else stats
                         }
+                        "action_button" -> stats
                         else -> stats
                     }
                     if (updated) {
@@ -340,8 +351,23 @@ class OptimisticWidgetAction : ActionCallback {
         val intent = Intent(context, PCForegroundService::class.java).apply {
             action = PCForegroundService.ACTION_SEND_COMMAND
             putExtra("DEVICE_IP", ip)
-            putExtra("action_type", actionType)
-            if (!actionValue.isNullOrEmpty()) putExtra("ACTION", actionValue)
+            
+            if (actionType == "action_button") {
+                val statsJson = context.getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE).getString(ip, null)
+                val stats = statsJson?.let { try { Gson().fromJson(statsJson, PCStats::class.java) } catch(e:Exception) { null } }
+                val fileName = actionValue?.split("\\", "/")?.last()?.lowercase()
+                
+                if (stats != null && fileName != null && stats.active_app?.lowercase() == fileName) {
+                    putExtra("action_type", "minimize_app")
+                } else {
+                    putExtra("action_type", "run")
+                    putExtra("ACTION", actionValue)
+                }
+            } else {
+                putExtra("action_type", actionType)
+                if (!actionValue.isNullOrEmpty()) putExtra("ACTION", actionValue)
+            }
+
             if (!appName.isNullOrEmpty()) putExtra("APP_NAME", appName)
             if (!volumeValue.isNullOrEmpty()) putExtra("VOLUME", volumeValue)
         }

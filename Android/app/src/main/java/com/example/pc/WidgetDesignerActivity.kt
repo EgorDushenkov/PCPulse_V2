@@ -271,7 +271,10 @@ class WidgetDesignerActivity : BaseActivity() {
             isWidget = true,
             onVibrate = { vibrate() },
             onVolumeChange = { name, vol -> sendMixerVolume(name, vol) },
-            onMediaCommand = { cmd -> sendMediaCommand(cmd) }
+            onMediaCommand = { cmd -> sendMediaCommand(cmd) },
+            onRunCommand = { path -> sendRunCommand(path) },
+            onMinimizeCommand = { sendMinimizeCommand() },
+            onCloseCommand = { name -> sendCloseAppCommand(name) }
         )
         
         val card = CardView(this).apply {
@@ -299,7 +302,29 @@ class WidgetDesignerActivity : BaseActivity() {
         webSocketManager?.sendCommand("media_command", mapOf("cmd" to cmd))
     }
 
+    private fun sendRunCommand(path: String) {
+        webSocketManager?.sendCommand("run", mapOf("path" to path))
+    }
+
+    private fun sendMinimizeCommand() {
+        webSocketManager?.sendCommand("minimize_app", emptyMap())
+    }
+
+    private fun sendCloseAppCommand(appName: String) {
+        webSocketManager?.sendCommand("close_app", mapOf("name" to appName))
+    }
+
     private fun showWidgetSettingsDialog(config: WidgetConfig) {
+        if (config.type == WidgetType.ACTION_BUTTON) {
+            showActionButtonConfigDialog(config) { label, path, useIcon, theme ->
+                config.label = label
+                config.action = path
+                config.useIcon = useIcon
+                config.theme = theme
+                refreshWidgets()
+            }
+            return
+        }
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -445,8 +470,7 @@ class WidgetDesignerActivity : BaseActivity() {
 
     private fun showAddWidgetDialog() {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
-        val excludedTypes = listOf(WidgetType.ACTION_BUTTON)
-        val types = WidgetType.entries.filter { it !in excludedTypes }.toTypedArray()
+        val types = WidgetType.entries.toTypedArray()
         
         val names = types.map { type ->
             if (isRussian) {
@@ -461,6 +485,7 @@ class WidgetDesignerActivity : BaseActivity() {
                     WidgetType.CONTROLS -> "Управление"
                     WidgetType.MEDIA_PLAYER -> "Медиаплеер"
                     WidgetType.AUDIO_MIXER -> "Микшер"
+                    WidgetType.ACTION_BUTTON -> "Кнопка действия"
                     else -> type.name
                 }
             } else {
@@ -472,15 +497,76 @@ class WidgetDesignerActivity : BaseActivity() {
             .setTitle(if (isRussian) "Добавить элемент" else "Add Element")
             .setItems(names) { _, i ->
                 val type = types[i]
-                val newConfig = when (type) {
-                    WidgetType.CONTROLS -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
-                    WidgetType.MEDIA_PLAYER -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
-                    WidgetType.AUDIO_MIXER -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
-                    else -> WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
+                if (type == WidgetType.ACTION_BUTTON) {
+                    showActionButtonConfigDialog(null) { label, path, useIcon, theme ->
+                        val newConfig = WidgetConfig(type, 0, 0, 1, 1, label, path, useIcon, deviceIp = selectedDevice, theme = theme)
+                        currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
+                        refreshWidgets()
+                    }
+                } else {
+                    val newConfig = when (type) {
+                        WidgetType.CONTROLS -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
+                        WidgetType.MEDIA_PLAYER -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
+                        WidgetType.AUDIO_MIXER -> WidgetConfig(type, 0, 0, 2, 2, deviceIp = selectedDevice)
+                        else -> WidgetConfig(type, 0, 0, 1, 1, deviceIp = selectedDevice)
+                    }
+                    currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
+                    refreshWidgets()
+                    showWidgetSettingsDialog(newConfig)
                 }
-                currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
-                refreshWidgets()
-                showWidgetSettingsDialog(newConfig)
+            }
+            .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
+            .show()
+    }
+
+    private fun showActionButtonConfigDialog(config: WidgetConfig?, onSave: (String, String, Boolean, String?) -> Unit) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 32)
+        }
+        val editLabel = EditText(this).apply { 
+            hint = if (isRussian) "Название кнопки (например, Steam)" else "Button label (e.g. Steam)"
+            setText(config?.label ?: "")
+        }
+        val editPath = EditText(this).apply { 
+            hint = if (isRussian) "Путь к файлу или URL" else "File path or URL"
+            setText(config?.action ?: "")
+        }
+        val checkUseIcon = CheckBox(this).apply { 
+            text = if (isRussian) "Иконка вместо названия" else "Icon instead of label"
+            isChecked = config?.useIcon ?: false
+            setPadding(0, 24, 0, 24)
+        }
+        
+        val themeLabel = TextView(this).apply { text = if (isRussian) "Тема кнопки:" else "Button theme:" }
+        val themeOptions = if (isRussian) {
+            arrayOf("ПО УМОЛЧАНИЮ", "ФИОЛЕТОВАЯ", "БИРЮЗОВАЯ", "ОРАНЖЕВАЯ", "ЗЕЛЕНАЯ")
+        } else {
+            arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")
+        }
+        val themeSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@WidgetDesignerActivity, android.R.layout.simple_spinner_dropdown_item, themeOptions)
+            val currentTheme = config?.theme ?: "DEFAULT"
+            val index = arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN").indexOf(currentTheme).coerceAtLeast(0)
+            setSelection(index)
+        }
+        
+        layout.addView(editLabel)
+        layout.addView(editPath)
+        layout.addView(checkUseIcon)
+        layout.addView(themeLabel)
+        layout.addView(themeSpinner)
+
+        AlertDialog.Builder(this)
+            .setTitle(if (isRussian) "Настройка кнопки" else "Button Settings")
+            .setView(layout)
+            .setPositiveButton("OK") { _, _ ->
+                val selectedThemeIndex = themeSpinner.selectedItemPosition
+                val selectedTheme = if (selectedThemeIndex == 0) null else {
+                    arrayOf("DEFAULT", "PURPLE", "TURQUOISE", "ORANGE", "GREEN")[selectedThemeIndex]
+                }
+                onSave(editLabel.text.toString(), editPath.text.toString(), checkUseIcon.isChecked, selectedTheme)
             }
             .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
             .show()
