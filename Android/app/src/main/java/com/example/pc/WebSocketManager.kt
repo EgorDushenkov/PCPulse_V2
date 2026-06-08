@@ -9,7 +9,9 @@ import java.util.concurrent.TimeUnit
 
 class WebSocketManager(
     private val gson: Gson, 
+    private val token: String? = null,
     private val onStatusChanged: ((Boolean) -> Unit)? = null,
+    private val onAuthFailed: (() -> Unit)? = null,
     private val onStatsReceived: (PCStats) -> Unit
 ) {
 
@@ -26,7 +28,15 @@ class WebSocketManager(
 
     fun connect(url: String) {
         currentUrl = url
-        val request = Request.Builder().url(url).build()
+        // Append token as query parameter for authentication
+        val authenticatedUrl = if (!token.isNullOrEmpty()) {
+            val separator = if (url.contains("?")) "&" else "?"
+            "$url${separator}token=$token"
+        } else {
+            url
+        }
+        
+        val request = Request.Builder().url(authenticatedUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 isConnected = true
@@ -47,6 +57,15 @@ class WebSocketManager(
                 webSocket.close(1000, null)
                 isConnected = false
                 Log.d("WebSocket", "Closing: $code / $reason")
+                
+                // Code 4001 means unauthorized — token is invalid
+                if (code == 4001) {
+                    Log.w("WebSocket", "Auth failed (4001), not reconnecting")
+                    onStatusChanged?.invoke(false)
+                    handler.post { onAuthFailed?.invoke() }
+                    return
+                }
+                
                 onStatusChanged?.invoke(false)
             }
 
@@ -60,6 +79,14 @@ class WebSocketManager(
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 isConnected = false
                 Log.d("WebSocket", "Closed: $code / $reason")
+                
+                // Code 4001 means unauthorized — don't reconnect
+                if (code == 4001) {
+                    Log.w("WebSocket", "Auth failed (4001), not reconnecting")
+                    handler.post { onAuthFailed?.invoke() }
+                    return
+                }
+                
                 onStatusChanged?.invoke(false)
             }
         })

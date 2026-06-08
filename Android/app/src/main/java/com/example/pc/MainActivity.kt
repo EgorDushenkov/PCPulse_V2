@@ -156,26 +156,113 @@ class MainActivity : BaseActivity() {
         
         val builder = AlertDialog.Builder(this)
         builder.setTitle(if (isRussian) "Добавить устройство" else "Add Device")
-        val input = EditText(this)
-        input.hint = if (isRussian) "Введите IP (например: 192.168.1.23)" else "Enter IP (e.g. 192.168.1.23)"
-        input.setSingleLine()
-        builder.setView(input)
-        builder.setPositiveButton(if (isRussian) "Сохранить" else "Save") { _, _ ->
+        
+        // Create a layout with two input fields: IP and PIN
+        val layout = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(50, 30, 50, 10)
+        }
+        
+        val inputIp = EditText(this)
+        inputIp.hint = if (isRussian) "IP (например: 192.168.1.23)" else "IP (e.g. 192.168.1.23)"
+        inputIp.setSingleLine()
+        
+        val inputPin = EditText(this)
+        inputPin.hint = if (isRussian) "PIN-код (6 цифр)" else "PIN code (6 digits)"
+        inputPin.setSingleLine()
+        inputPin.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        
+        layout.addView(inputIp)
+        layout.addView(inputPin)
+        builder.setView(layout)
+        
+        builder.setPositiveButton(if (isRussian) "Подключить" else "Connect") { _, _ ->
             vibrate()
-            val ip = input.text.toString().trim()
-            if (ip.isNotEmpty() && devices.none { it.ipAddress == ip }) {
-                val newDevice = Device(ip, pcName = if (isRussian) "Загрузка..." else "Loading...")
-                devices.add(newDevice)
-                deviceAdapter.notifyItemInserted(devices.size - 1)
-                saveDevices()
+            val ip = inputIp.text.toString().trim()
+            val pin = inputPin.text.toString().trim()
+            
+            if (ip.isEmpty() || pin.isEmpty()) {
+                Toast.makeText(this, 
+                    if (isRussian) "Введите IP и PIN-код" else "Enter IP and PIN code", 
+                    Toast.LENGTH_SHORT).show()
+                return@setPositiveButton
             }
+            
+            if (devices.any { it.ipAddress == ip }) {
+                Toast.makeText(this, 
+                    if (isRussian) "Устройство уже добавлено" else "Device already added", 
+                    Toast.LENGTH_SHORT).show()
+                return@setPositiveButton
+            }
+            
+            // Perform pairing request in background
+            Thread {
+                try {
+                    val client = OkHttpClient.Builder()
+                        .connectTimeout(5, TimeUnit.SECONDS)
+                        .readTimeout(5, TimeUnit.SECONDS)
+                        .build()
+                    
+                    val jsonBody = "{\"pin\":\"$pin\"}"
+                    val body = okhttp3.RequestBody.create(
+                        okhttp3.MediaType.parse("application/json"), jsonBody
+                    )
+                    val request = Request.Builder()
+                        .url("http://$ip:5000/auth/pair")
+                        .post(body)
+                        .build()
+                    
+                    val response = client.newCall(request).execute()
+                    
+                    if (response.isSuccessful) {
+                        val responseBody = response.body()?.string() ?: ""
+                        val json = com.google.gson.JsonParser.parseString(responseBody).asJsonObject
+                        val token = json.get("token")?.asString
+                        
+                        if (token != null) {
+                            runOnUiThread {
+                                // Save token for this IP
+                                prefs.edit().putString("TOKEN_$ip", token).apply()
+                                
+                                val newDevice = Device(ip, pcName = if (isRussian) "Загрузка..." else "Loading...")
+                                devices.add(newDevice)
+                                deviceAdapter.notifyItemInserted(devices.size - 1)
+                                saveDevices()
+                                
+                                Toast.makeText(this, 
+                                    if (isRussian) "Устройство подключено!" else "Device connected!", 
+                                    Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } else if (response.code() == 401) {
+                        runOnUiThread {
+                            Toast.makeText(this, 
+                                if (isRussian) "Неверный PIN-код" else "Wrong PIN code", 
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this, 
+                                if (isRussian) "Ошибка сервера: ${response.code()}" else "Server error: ${response.code()}", 
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        Toast.makeText(this, 
+                            if (isRussian) "Не удалось подключиться к $ip" else "Failed to connect to $ip", 
+                            Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }.start()
         }
         builder.setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
         builder.show()
     }
 
     private fun showDeleteDeviceDialog(device: Device) {
-        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
         
         AlertDialog.Builder(this)
             .setTitle(if (isRussian) "Удалить устройство?" else "Delete device?")
@@ -184,6 +271,9 @@ class MainActivity : BaseActivity() {
                 vibrate()
                 val index = devices.indexOf(device)
                 if (index != -1) {
+                    // Remove the stored auth token for this device
+                    prefs.edit().remove("TOKEN_${device.ipAddress}").apply()
+                    
                     devices.removeAt(index)
                     deviceAdapter.notifyItemRemoved(index)
                     saveDevices()

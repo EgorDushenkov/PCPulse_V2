@@ -1,7 +1,9 @@
 package pcpulse.network;
 
 import io.javalin.Javalin;
+import io.javalin.http.Context;
 import io.javalin.websocket.WsContext;
+import pcpulse.auth.AuthManager;
 import pcpulse.worker.WorkerManager;
 
 import javax.imageio.ImageIO;
@@ -14,11 +16,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class WebServer {
     private final WorkerManager workerManager;
+    private final AuthManager authManager;
     private final Set<WsContext> connectedClients = ConcurrentHashMap.newKeySet();
     private Javalin app;
 
-    public WebServer(WorkerManager workerManager) {
+    public WebServer(WorkerManager workerManager, AuthManager authManager) {
         this.workerManager = workerManager;
+        this.authManager = authManager;
     }
 
     public void start(int port) {
@@ -39,8 +43,56 @@ public class WebServer {
         setupRoutes();
     }
 
+    /**
+     * Extracts the Bearer token from the Authorization header.
+     * Expected format: "Bearer {token}"
+     */
+    private String extractToken(Context ctx) {
+        String auth = ctx.header("Authorization");
+        if (auth != null && auth.startsWith("Bearer ")) {
+            return auth.substring(7);
+        }
+        return null;
+    }
+
+    /**
+     * Checks if the request is authorized. Returns true if authorized, false otherwise.
+     * Sends 401 response if not authorized.
+     */
+    private boolean checkAuth(Context ctx) {
+        String token = extractToken(ctx);
+        if (!authManager.isAuthorized(token)) {
+            ctx.status(401).json(Collections.singletonMap("error", "Unauthorized"));
+            return false;
+        }
+        return true;
+    }
+
     private void setupRoutes() {
+        // --- AUTH ENDPOINT (no token required) ---
+        app.post("/auth/pair", ctx -> {
+            try {
+                String body = ctx.body();
+                // Parse PIN from JSON body: {"pin": "123456"}
+                com.fasterxml.jackson.databind.JsonNode node = 
+                    new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+                String pin = node.has("pin") ? node.get("pin").asText() : "";
+                
+                String token = authManager.pair(pin);
+                if (token != null) {
+                    ctx.json(Collections.singletonMap("token", token));
+                } else {
+                    ctx.status(401).json(Collections.singletonMap("error", "Invalid PIN"));
+                }
+            } catch (Exception e) {
+                ctx.status(400).json(Collections.singletonMap("error", "Bad request"));
+            }
+        });
+
+        // --- PROTECTED ENDPOINTS ---
         app.get("/power/{action}", ctx -> {
+            if (!checkAuth(ctx)) return;
+
             String action = ctx.pathParam("action");
             try {
                 if (action.equals("sleep")) {
@@ -57,6 +109,8 @@ public class WebServer {
         });
 
         app.get("/screenshot", ctx -> {
+            if (!checkAuth(ctx)) return;
+
             try {
                 Robot robot = new Robot();
                 Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
@@ -72,6 +126,8 @@ public class WebServer {
         });
 
         app.get("/kill/{pid}", ctx -> {
+            if (!checkAuth(ctx)) return;
+
             try {
                 long pid = Long.parseLong(ctx.pathParam("pid"));
                 ProcessHandle.of(pid).ifPresent(ProcessHandle::destroyForcibly);
@@ -81,8 +137,16 @@ public class WebServer {
             }
         });
 
+        // --- WEBSOCKET (token via query parameter) ---
         app.ws("/ws", ws -> {
-            ws.onConnect(ctx -> connectedClients.add(ctx));
+            ws.onConnect(ctx -> {
+                String token = ctx.queryParam("token");
+                if (!authManager.isAuthorized(token)) {
+                    ctx.session.close(4001, "Unauthorized");
+                    return;
+                }
+                connectedClients.add(ctx);
+            });
             ws.onClose(ctx -> connectedClients.remove(ctx));
             ws.onMessage(ctx -> {
                 workerManager.sendCommand(ctx.message());

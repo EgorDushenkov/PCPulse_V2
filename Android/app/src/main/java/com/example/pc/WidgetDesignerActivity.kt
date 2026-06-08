@@ -141,11 +141,18 @@ class WidgetDesignerActivity : BaseActivity() {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, pos: Int, p3: Long) {
                 selectedDevice = devices[pos]
                 
+                // Read the stored auth token for this device
+                val token = prefs.getString("TOKEN_$selectedDevice", null)
+                
                 // Connect to WebSocket for live preview
                 webSocketManager?.disconnect()
-                webSocketManager = WebSocketManager(gson, null) { stats ->
-                    onStatsUpdated(stats)
-                }
+                webSocketManager = WebSocketManager(
+                    gson = gson,
+                    token = token,
+                    onStatsReceived = { stats ->
+                        onStatsUpdated(stats)
+                    }
+                )
                 webSocketManager?.connect("ws://$selectedDevice:5000/ws")
 
                 refreshWidgets()

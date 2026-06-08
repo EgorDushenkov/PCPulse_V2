@@ -147,8 +147,12 @@ class PCForegroundService : Service() {
         // Add new connections or update current state for app
         ipSet.forEach { ip ->
             if (!connections.containsKey(ip)) {
+                // Read the stored auth token for this device
+                val token = prefs.getString("TOKEN_$ip", null)
+                
                 val manager = WebSocketManager(
                     gson = gson,
+                    token = token,
                     onStatusChanged = { isOnline ->
                         if (!isOnline) {
                             deviceStats.remove(ip)
@@ -156,6 +160,16 @@ class PCForegroundService : Service() {
                             broadcastOfflineForWidget(ip)
                             updateNotification()
                         }
+                    },
+                    onAuthFailed = {
+                        // Notify UI that auth failed for this device
+                        val intent = Intent(ACTION_STATS_UPDATE).apply {
+                            setPackage(packageName)
+                            putExtra("DEVICE_IP", ip)
+                            putExtra("IS_ONLINE", false)
+                            putExtra("AUTH_FAILED", true)
+                        }
+                        sendBroadcast(intent)
                     },
                     onStatsReceived = { stats ->
                         deviceStats[ip] = stats

@@ -37,18 +37,26 @@ abstract class BaseActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         
         intent.getStringExtra("DEVICE_IP")?.let { ip ->
-            getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
-                .edit()
+            val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+            prefs.edit()
                 .putString("SERVER_IP", ip)
                 .apply()
 
-            currentApi = RetrofitClient.getClient(ip)
+            // Read the stored auth token for this device
+            val token = prefs.getString("TOKEN_$ip", null)
+
+            currentApi = RetrofitClient.getClient(ip, token)
             
-            webSocketManager = WebSocketManager(gson, { isOnline ->
-                runOnUiThread { onStatusChanged(isOnline) }
-            }) { stats ->
-                onStatsUpdated(stats)
-            }
+            webSocketManager = WebSocketManager(
+                gson = gson,
+                token = token,
+                onStatusChanged = { isOnline ->
+                    runOnUiThread { onStatusChanged(isOnline) }
+                },
+                onStatsReceived = { stats ->
+                    onStatsUpdated(stats)
+                }
+            )
             webSocketManager?.connect("ws://$ip:5000/ws")
         }
     }

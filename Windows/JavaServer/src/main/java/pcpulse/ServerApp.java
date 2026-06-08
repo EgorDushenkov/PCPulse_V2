@@ -2,6 +2,7 @@ package pcpulse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import pcpulse.auth.AuthManager;
 import pcpulse.gui.TrayAndGUI;
 import pcpulse.network.WebServer;
 import pcpulse.system.SystemMonitor;
@@ -17,13 +18,14 @@ public class ServerApp {
     public static void main(String[] args) {
         SystemMonitor systemMonitor = new SystemMonitor();
         WorkerManager workerManager = new WorkerManager();
+        AuthManager authManager = new AuthManager();
         
         workerManager.start();
 
-        TrayAndGUI gui = new TrayAndGUI(systemMonitor.getLocalIp(), workerManager::stop);
+        TrayAndGUI gui = new TrayAndGUI(systemMonitor.getLocalIp(), authManager, workerManager::stop);
         gui.init();
 
-        WebServer webServer = new WebServer(workerManager);
+        WebServer webServer = new WebServer(workerManager, authManager);
         webServer.start(5000);
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
