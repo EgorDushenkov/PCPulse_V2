@@ -22,10 +22,16 @@ public class ServerApp {
         
         workerManager.start();
 
-        TrayAndGUI gui = new TrayAndGUI(systemMonitor.getLocalIp(), authManager, workerManager::stop);
+        WebServer webServer = new WebServer(workerManager, authManager);
+
+        TrayAndGUI gui = new TrayAndGUI(
+            systemMonitor.getLocalIp(), 
+            authManager, 
+            workerManager::stop, 
+            webServer::disconnectUnauthorized
+        );
         gui.init();
 
-        WebServer webServer = new WebServer(workerManager, authManager);
         webServer.start(5000);
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);

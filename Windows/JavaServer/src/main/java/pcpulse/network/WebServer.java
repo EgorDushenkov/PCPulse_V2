@@ -161,4 +161,13 @@ public class WebServer {
             }
         }
     }
+
+    public void disconnectUnauthorized() {
+        for (WsContext ctx : connectedClients) {
+            String token = ctx.queryParam("token");
+            if (!authManager.isAuthorized(token)) {
+                ctx.session.close(4001, "Unauthorized");
+            }
+        }
+    }
 }
