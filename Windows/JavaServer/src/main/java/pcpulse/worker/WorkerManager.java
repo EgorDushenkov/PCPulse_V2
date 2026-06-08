@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 
 public class WorkerManager {
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -21,12 +22,11 @@ public class WorkerManager {
     public void start() {
         try {
             ProcessBuilder pb = new ProcessBuilder("worker.exe");
-            pb.redirectErrorStream(true);
             workerProcess = pb.start();
-            workerWriter = new BufferedWriter(new OutputStreamWriter(workerProcess.getOutputStream()));
+            workerWriter = new BufferedWriter(new OutputStreamWriter(workerProcess.getOutputStream(), StandardCharsets.UTF_8));
 
             Thread readerThread = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(workerProcess.getInputStream()))) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(workerProcess.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         try {
@@ -44,6 +44,15 @@ public class WorkerManager {
             });
             readerThread.setDaemon(true);
             readerThread.start();
+
+            // Drain stderr separately to prevent it from blocking the process
+            Thread stderrThread = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(workerProcess.getErrorStream(), StandardCharsets.UTF_8))) {
+                    while (reader.readLine() != null) { /* discard */ }
+                } catch (Exception ignored) {}
+            });
+            stderrThread.setDaemon(true);
+            stderrThread.start();
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -1,56 +1,49 @@
-# Python
+# ============================================
+#  PCPulse — Windows/.gitignore
+# ============================================
+
+# ── Встроенная JDK (≈327 MB) ────────────────
+jdk-21.0.3+9/
+
+# ── Apache Maven (≈10 MB) ───────────────────
+apache-maven-3.9.6/
+
+# ── Maven build output (≈12 MB) ─────────────
+JavaServer/target/
+
+# ── Python cache ────────────────────────────
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyo
+*.pyd
+
+# ── Исполняемые / бинарные файлы ────────────
+*.exe
+*.dll
+!OpenHardwareMonitorLib.dll
 *.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+*.dylib
 
-# Virtual environments
-venv/
-.venv/
-env/
-.env/
-ENV/
-env.bak/
-venv.bak/
-
-# Java / Maven
-JavaServer/target/
-*.class
+# ── Логи ────────────────────────────────────
 *.log
-*.ctxt
-.mtj.tmp/
-# If you build and need the jar, you might want to uncomment the line below or just ignore target/
-# *.jar
+*.log.*
+logs/
+
+# ── Архивы сборки ───────────────────────────
+*.jar
 *.war
-*.nar
 *.ear
 *.zip
 *.tar.gz
 *.rar
 
-# Extracted local binaries (JDK and Maven)
-jdk-21.0.3+9/
-apache-maven-3.9.6/
+# ── Виртуальные окружения Python ────────────
+venv/
+.venv/
+env/
+.env/
 
-# IDE and Editors
+# ── IDE / редакторы ─────────────────────────
 .idea/
 .vscode/
 *.swp
@@ -60,21 +53,13 @@ apache-maven-3.9.6/
 .classpath
 .settings/
 
-# OS Generated Files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
+# ── ОС-мусор ───────────────────────────────
+Thumbs.db
 ehthumbs.db
-ehthumbs_vista.db
-[Tt]humbs.db
-desktop.ini
-# Игнорируем встроенную JDK в папке Windows
-Windows/jdk-21.0.3+9/
-windows/jdk-21.0.3+9/
+Desktop.ini
+.DS_Store
 
-# Игнорируем готовые исполняемые файлы
-*.exe
-Windows/PC Pulse.exe
-windows/PC Pulse.exe
+# ── PyInstaller (если используется) ─────────
+build/
+dist/
+*.spec

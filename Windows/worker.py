@@ -1,5 +1,6 @@
 import sys
 import os
+import io
 import ctypes
 
 try:
@@ -8,6 +9,12 @@ try:
         ctypes.windll.user32.ShowWindow(hwnd, 0)
 except:
     pass
+
+# Force UTF-8 encoding for pipe communication with Java server
+if sys.stdout:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if sys.stdin:
+    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
 
 import json
 import time
@@ -130,13 +137,25 @@ def audio_app_thread():
                         mic_ctl.SetMute(is_muted, None)
                 elif action in ["set_mixer", "set_mixer_volume"]:
                     try:
-                        pythoncom.CoInitialize()
                         sessions = AudioUtilities.GetAllSessions()
                         app_name = str(cmd.get("app", "")).lower()
+                        volume_level = cmd.get("vol") if cmd.get("vol") is not None else cmd.get("val", 0)
+                        with open("worker_debug.log", "a") as f:
+                            f.write(f"[set_mixer] Looking for app: '{app_name}', target vol: {volume_level}\n")
+                            f.write(f"[set_mixer] Available sessions: {[s.Process.name() if s.Process else 'None' for s in sessions]}\n")
+                        found = False
                         for s in sessions:
-                            if s.Process and s.Process.name() and s.Process.name().lower() == app_name:
-                                v_ctl = s._ctl.QueryInterface(ISimpleAudioVolume)
-                                v_ctl.SetMasterVolume(float(cmd.get("vol", cmd.get("val", 0))) / 100.0, None)
+                            if s.Process and s.Process.name():
+                                proc_name = s.Process.name().lower()
+                                if proc_name == app_name:
+                                    v_ctl = s._ctl.QueryInterface(ISimpleAudioVolume)
+                                    v_ctl.SetMasterVolume(float(volume_level) / 100.0, None)
+                                    found = True
+                                    with open("worker_debug.log", "a") as f:
+                                        f.write(f"[set_mixer] SUCCESS: Set '{proc_name}' volume to {volume_level}\n")
+                        if not found:
+                            with open("worker_debug.log", "a") as f:
+                                f.write(f"[set_mixer] FAILED: No session matched '{app_name}'\n")
                     except Exception as e:
                         with open("worker_debug.log", "a") as f: f.write(f"Set mixer error: {e}\n")
                 elif action == "media_command" or action == "media":
@@ -155,7 +174,26 @@ def audio_app_thread():
                             if p.info['name'].lower() == app_name: p.kill()
                         except: pass
                 elif action == "run":
-                    os.startfile(cmd.get("path"))
+                    run_path = cmd.get("path")
+                    with open("worker_debug.log", "a") as f:
+                        f.write(f"[run] Attempting to open: '{run_path}'\n")
+                        f.write(f"[run] Path exists: {os.path.exists(run_path) if run_path else 'path is None'}\n")
+                    try:
+                        os.startfile(run_path)
+                        with open("worker_debug.log", "a") as f:
+                            f.write(f"[run] SUCCESS: startfile called\n")
+                    except Exception as e:
+                        with open("worker_debug.log", "a") as f:
+                            f.write(f"[run] ERROR: {e}\n")
+                elif action == "shutdown":
+                    with open("worker_debug.log", "a") as f: f.write("[power] Shutdown command received\n")
+                    os.system("shutdown /s /t 1")
+                elif action == "sleep":
+                    with open("worker_debug.log", "a") as f: f.write("[power] Sleep command received\n")
+                    os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")
+                elif action == "restart":
+                    with open("worker_debug.log", "a") as f: f.write("[power] Restart command received\n")
+                    os.system("shutdown /r /t 1")
 
             try:
                 devices = AudioUtilities.GetSpeakers()
@@ -228,7 +266,7 @@ def print_state_loop():
     while True:
         try:
             if sys.stdout is None:
-                sys.stdout = os.fdopen(1, 'w')
+                sys.stdout = io.TextIOWrapper(os.fdopen(1, 'wb'), encoding='utf-8', errors='replace')
             sys.stdout.write(json.dumps(state) + "\n")
             sys.stdout.flush()
         except Exception as e:
@@ -245,11 +283,12 @@ if __name__ == "__main__":
     while True:
         try:
             if sys.stdin is None:
-                sys.stdin = os.fdopen(0, 'r')
+                sys.stdin = io.TextIOWrapper(os.fdopen(0, 'rb'), encoding='utf-8', errors='replace')
             line = sys.stdin.readline()
             if not line:
                 time.sleep(1)
                 continue
+            with open("worker_debug.log", "a") as f: f.write(f"[stdin] Raw command: {line.strip()}\n")
             cmd = json.loads(line)
             cmd_queue.put(cmd)
         except Exception as e:
