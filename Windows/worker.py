@@ -27,6 +27,9 @@ import win32gui
 import win32process
 import win32con
 import pyautogui
+import win32ui
+import base64
+from PIL import Image
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume, ISimpleAudioVolume
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
@@ -62,6 +65,32 @@ state = {
     "active_app": "",
     "running_apps": []
 }
+
+def get_icon_as_base64(path):
+    try:
+        path = path.strip('"')
+        large, small = win32gui.ExtractIconEx(path, 0)
+        if not large:
+            return None
+        hicon = large[0]
+        hdc = win32ui.CreateDCFromHandle(win32gui.GetDC(0))
+        hbmp = win32ui.CreateBitmap()
+        hbmp.CreateCompatibleBitmap(hdc, 32, 32)
+        hdc_mem = hdc.CreateCompatibleDC()
+        hdc_mem.SelectObject(hbmp)
+        hdc_mem.DrawIcon((0, 0), hicon)
+        bmpinfo = hbmp.GetInfo()
+        bmpstr = hbmp.GetBitmapBits(True)
+        img = Image.frombuffer('RGBA', (32, 32), bmpstr, 'raw', 'BGRA', 0, 1)
+        win32gui.DestroyIcon(hicon)
+        for h in large[1:]: win32gui.DestroyIcon(h)
+        for h in small: win32gui.DestroyIcon(h)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+    except Exception as e:
+        with open("worker_debug.log", "a") as f: f.write(f"Icon error: {e}\n")
+        return None
 
 cmd_queue = queue.Queue()
 
@@ -194,6 +223,22 @@ def audio_app_thread():
                 elif action == "restart":
                     with open("worker_debug.log", "a") as f: f.write("[power] Restart command received\n")
                     os.system("shutdown /r /t 1")
+                elif action == "get_icon":
+                    try:
+                        icon_path = cmd.get("path", "")
+                        req_id = cmd.get("req_id", "")
+                        icon_bytes = get_icon_as_base64(icon_path)
+                        if icon_bytes:
+                            b64 = base64.b64encode(icon_bytes).decode('utf-8')
+                            resp = json.dumps({"type": "icon_response", "req_id": req_id, "data": b64})
+                            sys.stdout.write(resp + "\n")
+                            sys.stdout.flush()
+                        else:
+                            resp = json.dumps({"type": "icon_response", "req_id": req_id, "data": ""})
+                            sys.stdout.write(resp + "\n")
+                            sys.stdout.flush()
+                    except Exception as e:
+                        with open("worker_debug.log", "a") as f: f.write(f"Icon action error: {e}\n")
 
             try:
                 devices = AudioUtilities.GetSpeakers()

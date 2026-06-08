@@ -137,6 +137,24 @@ public class WebServer {
             }
         });
 
+        app.get("/icon", ctx -> {
+            String path = ctx.queryParam("path");
+            if (path == null || path.isEmpty()) {
+                ctx.status(400).result("Path is required");
+                return;
+            }
+            try {
+                byte[] iconBytes = workerManager.requestIcon(path).get(5, java.util.concurrent.TimeUnit.SECONDS);
+                if (iconBytes != null && iconBytes.length > 0) {
+                    ctx.contentType("image/png").result(iconBytes);
+                } else {
+                    ctx.status(404).result("Icon not found");
+                }
+            } catch (Exception e) {
+                ctx.status(500).result("Error extracting icon");
+            }
+        });
+
         // --- WEBSOCKET (token via query parameter) ---
         app.ws("/ws", ws -> {
             ws.onConnect(ctx -> {

@@ -10,11 +10,16 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
+
 public class WorkerManager {
     private static final ObjectMapper mapper = new ObjectMapper();
     private ObjectNode latestWorkerState = mapper.createObjectNode();
     private Process workerProcess;
     private BufferedWriter workerWriter;
+    private final ConcurrentHashMap<String, CompletableFuture<byte[]>> iconRequests = new ConcurrentHashMap<>();
 
     public WorkerManager() {
     }
@@ -32,8 +37,21 @@ public class WorkerManager {
                         try {
                             JsonNode node = mapper.readTree(line);
                             if (node.isObject()) {
-                                synchronized (latestWorkerState) {
-                                    latestWorkerState = (ObjectNode) node;
+                                if (node.has("type") && "icon_response".equals(node.get("type").asText())) {
+                                    String reqId = node.get("req_id").asText();
+                                    String data = node.get("data").asText();
+                                    CompletableFuture<byte[]> future = iconRequests.remove(reqId);
+                                    if (future != null) {
+                                        if (data.isEmpty()) {
+                                            future.complete(null);
+                                        } else {
+                                            future.complete(java.util.Base64.getDecoder().decode(data));
+                                        }
+                                    }
+                                } else {
+                                    synchronized (latestWorkerState) {
+                                        latestWorkerState = (ObjectNode) node;
+                                    }
                                 }
                             }
                         } catch (Exception ignored) {}
@@ -79,5 +97,19 @@ public class WorkerManager {
         synchronized (latestWorkerState) {
             return latestWorkerState.deepCopy();
         }
+    }
+
+    public CompletableFuture<byte[]> requestIcon(String path) {
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
+        String reqId = UUID.randomUUID().toString();
+        iconRequests.put(reqId, future);
+        
+        ObjectNode cmd = mapper.createObjectNode();
+        cmd.put("action", "get_icon");
+        cmd.put("path", path);
+        cmd.put("req_id", reqId);
+        sendCommand(cmd.toString());
+        
+        return future;
     }
 }
