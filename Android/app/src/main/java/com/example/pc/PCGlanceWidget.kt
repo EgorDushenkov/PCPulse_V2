@@ -61,20 +61,15 @@ class PCGlanceWidget : GlanceAppWidget() {
         val context = LocalContext.current
         val state = currentState<Preferences>()
         
-        // Use a more reliable way to get appWidgetId or fallback to scanning
         val appWidgetId = getAppWidgetId(context, id)
         
         val prefs = context.getSharedPreferences("WIDGET_PREFS_$appWidgetId", Context.MODE_PRIVATE)
         val deviceIp = prefs.getString("DEVICE_IP", "") ?: ""
         val layoutJson = prefs.getString("LAYOUT_JSON", null)
         
-        // Try to get stats from Glance State first (it's the most reactive way)
         var statsJson = state[DATA_KEY]
         val isOnline = state[IS_ONLINE_KEY] ?: true // Default to true if not set
         
-        // If state is empty or belongs to another IP (in case of multiple widgets), fallback to cache
-        // Actually, for multiple widgets we should store a Map in the state or use per-widget state
-        // For now, let's see if this forces the update
         if (statsJson == null) {
             statsJson = context.getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE).getString(deviceIp, null)
         }
@@ -97,7 +92,6 @@ class PCGlanceWidget : GlanceAppWidget() {
             return
         }
 
-        // 1. Pixel-perfect background generated asynchronously
         val fullBitmapState = produceState<Bitmap?>(initialValue = null, layout, stats, isOnline) {
             value = withContext(Dispatchers.IO) {
                 renderLayoutToBitmap(context, layout, stats, isOnline)
@@ -105,7 +99,6 @@ class PCGlanceWidget : GlanceAppWidget() {
         }
         val fullBitmap = fullBitmapState.value
 
-        // Layout parameters
         val gridWidth = layout.gridWidth
         val gridHeight = layout.gridHeight
 
@@ -119,8 +112,6 @@ class PCGlanceWidget : GlanceAppWidget() {
                 )
             }
 
-            // 2. Clickable layer using Box offsets
-            // We use a Column/Row structure that matches the grid to ensure clicks are captured
             Column(modifier = GlanceModifier.fillMaxSize()) {
                 for (row in 0 until gridHeight) {
                     Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
@@ -263,7 +254,7 @@ class PCGlanceWidget : GlanceAppWidget() {
 
     private suspend fun renderLayoutToBitmap(context: Context, layout: DashboardLayout, stats: PCStats?, isOnline: Boolean): Bitmap? {
         val density = context.resources.displayMetrics.density
-        // Use a fixed virtual size for the bitmap to ensure consistency
+        // чем больше cellPx — тем чётче картинка на виджете
         val cellPx = 200 // Higher resolution for better quality
         val widthPx = layout.gridWidth * cellPx
         val heightPx = layout.gridHeight * cellPx
@@ -273,14 +264,12 @@ class PCGlanceWidget : GlanceAppWidget() {
         val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
-        // Draw background
         val bgPaint = android.graphics.Paint().apply { color = android.graphics.Color.parseColor("#E6121212") }
         canvas.drawRect(0f, 0f, widthPx.toFloat(), heightPx.toFloat(), bgPaint)
 
         layout.widgets.forEach { config ->
             val view = WidgetFactory.create(config, context, isWidget = true)
             
-            // Handle Action Button icons synchronously for the widget bitmap
             if (view is ActionButtonWidgetView && config.useIcon && !config.action.isNullOrEmpty()) {
                 val url = ActionButtonWidgetView.getIconUrl(context, config)
                 try {
@@ -330,7 +319,6 @@ class OptimisticWidgetAction : ActionCallback {
         val appName = parameters[appNameKey]
         val volumeValue = parameters[volumeKey]
 
-        // 1. Update state optimistically
         updateAppWidgetState(context, glanceId) { prefs ->
             prefs[PCGlanceWidget.LAST_UPDATE_KEY] = System.currentTimeMillis()
             val statsJson = prefs[PCGlanceWidget.DATA_KEY]
@@ -374,7 +362,6 @@ class OptimisticWidgetAction : ActionCallback {
         }
         PCGlanceWidget().update(context, glanceId)
 
-        // 2. Send command to service
         val intent = Intent(context, PCForegroundService::class.java).apply {
             action = PCForegroundService.ACTION_SEND_COMMAND
             putExtra("DEVICE_IP", ip)
@@ -440,7 +427,6 @@ class PCGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
                             val prefs = context.getSharedPreferences("WIDGET_PREFS_$appWidgetId", Context.MODE_PRIVATE)
                             val widgetIp = prefs.getString("DEVICE_IP", "")
                             
-                            // Update state only for widgets matching this IP
                             if (widgetIp == ip) {
                                 updateAppWidgetState(context, id) { statePrefs ->
                                     statePrefs[PCGlanceWidget.IS_ONLINE_KEY] = isOnline

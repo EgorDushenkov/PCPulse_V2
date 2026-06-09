@@ -41,7 +41,6 @@ abstract class BaseActivity : AppCompatActivity() {
                 .putString("SERVER_IP", ip)
                 .apply()
 
-            // Read the stored auth token for this device
             val token = prefs.getString("TOKEN_$ip", null)
 
             currentApi = RetrofitClient.getClient(ip, token)
@@ -131,7 +130,9 @@ abstract class BaseActivity : AppCompatActivity() {
                     }
                 }
             }
-            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {}
+            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                Log.d("Screenshot", "не достучались до сервера")
+            }
         })
     }
 
@@ -159,7 +160,9 @@ abstract class BaseActivity : AppCompatActivity() {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
                 Toast.makeText(this, if (isRussian) "Сохранено в галерею" else "Saved to gallery", Toast.LENGTH_SHORT).show()
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            Log.w("Gallery", "не удалось сохранить: ${e.message}")
+        }
     }
 
     protected fun sendMixerVolume(appName: String, volume: Int) {

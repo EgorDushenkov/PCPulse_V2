@@ -13,7 +13,7 @@ import android.widget.TextView
 
 class DashboardActivity : BaseActivity() {
 
-    private lateinit var dashIpText: TextView
+    private lateinit var ipText: TextView
     private lateinit var uptimeText: TextView
     private lateinit var cpuSpeedometer: SpeedometerView
     private lateinit var cpuNameText: TextView
@@ -26,7 +26,7 @@ class DashboardActivity : BaseActivity() {
     private lateinit var netDownText: TextView
     private lateinit var netUpText: TextView
     private lateinit var containers: Map<WidgetType, LinearLayout>
-    private lateinit var openConstructorButton: Button
+    private lateinit var btnDesigner: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,8 +37,8 @@ class DashboardActivity : BaseActivity() {
 
         val ip = intent.getStringExtra("DEVICE_IP") ?: ""
         if (ip.isNotEmpty()) {
-            dashIpText.text = "IP: $ip"
-            openConstructorButton.setOnClickListener {
+            ipText.text = "IP: $ip"
+            btnDesigner.setOnClickListener {
                 vibrate()
                 val intent = Intent(this, CustomDashboardActivity::class.java).apply {
                     putExtra("DEVICE_IP", ip)
@@ -92,7 +92,7 @@ class DashboardActivity : BaseActivity() {
         
         findViewById<TextView>(R.id.dashTitle).text = if (isRussian) "Панель управления" else "Dashboard"
         
-        dashIpText = findViewById(R.id.dashIpText)
+        ipText = findViewById(R.id.ipText)
         uptimeText = findViewById(R.id.uptimeText)
         cpuSpeedometer = findViewById(R.id.cpuSpeedometer)
         cpuNameText = findViewById(R.id.cpuNameText)
@@ -104,8 +104,8 @@ class DashboardActivity : BaseActivity() {
         gpuDetailText = findViewById(R.id.gpuDetailText)
         netDownText = findViewById(R.id.netDownText)
         netUpText = findViewById(R.id.netUpText)
-        openConstructorButton = findViewById(R.id.openConstructorButton)
-        openConstructorButton.text = if (isRussian) "Открыть Конструктор" else "Open Designer"
+        btnDesigner = findViewById(R.id.btnDesigner)
+        btnDesigner.text = if (isRussian) "Открыть Конструктор" else "Open Designer"
 
         containers = mapOf(
             WidgetType.AUDIO_MIXER to findViewById(R.id.mixerContainer),

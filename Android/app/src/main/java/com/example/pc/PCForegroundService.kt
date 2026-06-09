@@ -29,7 +29,7 @@ class PCForegroundService : Service() {
     private val deviceStats = ConcurrentHashMap<String, PCStats>()
     private val mediaSessions = ConcurrentHashMap<String, MediaSessionCompat>()
     private var lastWidgetUpdateTime = 0L
-    private val serviceScope = MainScope()
+    private val scope = MainScope()
     private val debounceJobs = ConcurrentHashMap<String, Job>()
 
     companion object {
@@ -107,14 +107,13 @@ class PCForegroundService : Service() {
                             if (ip != null && app != null && vol != null) {
                                 val key = "$ip|$app"
                                 debounceJobs[key]?.cancel()
-                                debounceJobs[key] = serviceScope.launch {
+                                debounceJobs[key] = scope.launch {
                                     delay(150)
                                     socket?.sendCommand("set_mixer_volume", mapOf("app" to app, "vol" to vol))
                                 }
                             }
                         }
                         else -> {
-                            // Single word commands
                             socket?.sendCommand(cmd)
                         }
                     }
@@ -134,7 +133,6 @@ class PCForegroundService : Service() {
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         val ipSet = prefs.getStringSet("DEVICE_IPS", emptySet()) ?: emptySet()
 
-        // Remove old connections
         val currentIps = connections.keys().toList()
         currentIps.forEach { ip ->
             if (ip !in ipSet) {
@@ -144,10 +142,8 @@ class PCForegroundService : Service() {
             }
         }
 
-        // Add new connections or update current state for app
         ipSet.forEach { ip ->
             if (!connections.containsKey(ip)) {
-                // Read the stored auth token for this device
                 val token = prefs.getString("TOKEN_$ip", null)
                 
                 val manager = WebSocketManager(
@@ -162,7 +158,6 @@ class PCForegroundService : Service() {
                         }
                     },
                     onAuthFailed = {
-                        // Notify UI that auth failed for this device
                         val intent = Intent(ACTION_STATS_UPDATE).apply {
                             setPackage(packageName)
                             putExtra("DEVICE_IP", ip)
@@ -209,11 +204,9 @@ class PCForegroundService : Service() {
     private fun broadcastStats(ip: String, stats: PCStats) {
         val statsJson = gson.toJson(stats)
         
-        // Cache for widgets - use commit to ensure it's written before widget update
         getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE)
             .edit().putString(ip, statsJson).commit()
 
-        // 1. Universal broadcast for the app UI
         val intent = Intent(ACTION_STATS_UPDATE).apply {
             setPackage(packageName)
             putExtra("DEVICE_IP", ip)
@@ -222,7 +215,6 @@ class PCForegroundService : Service() {
         }
         sendBroadcast(intent)
 
-        // 2. Explicit broadcast for Glance widget with Debounce
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastWidgetUpdateTime > 1000) {
             lastWidgetUpdateTime = currentTime
@@ -379,7 +371,7 @@ class PCForegroundService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("PC Pulse Background Service")
             .setContentText(contentText)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Use a better icon if available
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
@@ -400,7 +392,7 @@ class PCForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        serviceScope.cancel()
+        scope.cancel()
         connections.values.forEach { it.disconnect() }
         connections.clear()
         mediaSessions.values.forEach { 

@@ -4,11 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import okhttp3.*
-import java.io.IOException
 
 class WidgetClickReceiver : BroadcastReceiver() {
-    private val client = OkHttpClient()
 
     override fun onReceive(context: Context, intent: Intent) {
         val type = intent.getStringExtra("WIDGET_TYPE")
@@ -19,7 +16,6 @@ class WidgetClickReceiver : BroadcastReceiver() {
 
         if (ip == null) return
 
-        // Handle generic media action from notification or single button
         if (intent.action == "com.example.pc.MEDIA_ACTION") {
             if (action != null) sendToService(context, ip, "media", action)
             return
@@ -60,28 +56,5 @@ class WidgetClickReceiver : BroadcastReceiver() {
             putExtra("ACTION", action)
         }
         context.startService(intent)
-    }
-
-    private fun sendCommand(ip: String, endpoint: String, vararg params: Pair<String, String>) {
-        val urlBuilder = HttpUrl.Builder()
-            .scheme("http")
-            .host(ip)
-            .port(5000)
-            .addPathSegment(endpoint)
-        
-        params.forEach { urlBuilder.addQueryParameter(it.first, it.second) }
-
-        val request = Request.Builder()
-            .url(urlBuilder.build())
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e("WidgetClick", "Failed to send command $endpoint", e)
-            }
-            override fun onResponse(call: Call, response: Response) {
-                response.close()
-            }
-        })
     }
 }

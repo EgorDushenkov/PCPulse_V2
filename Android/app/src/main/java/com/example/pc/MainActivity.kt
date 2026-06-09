@@ -184,7 +184,6 @@ class MainActivity : BaseActivity() {
                     return@setPositiveButton
                 }
                 
-                // Perform pairing request in background
                 Thread {
                     try {
                     val client = OkHttpClient.Builder()
@@ -210,7 +209,6 @@ class MainActivity : BaseActivity() {
                         
                         if (token != null) {
                             runOnUiThread {
-                                // Save token for this IP
                                 prefs.edit().putString("TOKEN_$ip", token).apply()
                                 
                                 val newDevice = Device(ip, pcName = if (isRussian) "Загрузка..." else "Loading...")
@@ -260,7 +258,6 @@ class MainActivity : BaseActivity() {
                 vibrate()
                 val index = devices.indexOf(device)
                 if (index != -1) {
-                    // Remove the stored auth token for this device
                     prefs.edit().remove("TOKEN_${device.ipAddress}").apply()
                     
                     devices.removeAt(index)
@@ -292,7 +289,7 @@ class MainActivity : BaseActivity() {
         try {
             unregisterReceiver(statsReceiver)
         } catch (e: Exception) {
-            // Receiver might not be registered
+            // бывает если activity убили раньше чем зарегали
         }
     }
 }

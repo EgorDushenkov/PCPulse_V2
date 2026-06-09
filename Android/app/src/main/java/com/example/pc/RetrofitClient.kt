@@ -10,13 +10,8 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
     private val clients = mutableMapOf<String, ApiService>()
 
-    /**
-     * Creates a Retrofit client for the given IP with an auth token.
-     * The token is sent as a Bearer token in the Authorization header on every request.
-     */
     fun getClient(ip: String, token: String? = null): ApiService {
         val cleanIp = ip.trim()
-        // Include token in cache key so different tokens create different clients
         val cacheKey = "$cleanIp|${token ?: ""}"
         val baseUrl = if (cleanIp.startsWith("http")) {
             if (cleanIp.endsWith("/")) cleanIp else "$cleanIp/"
@@ -33,7 +28,6 @@ object RetrofitClient {
                     maxRequestsPerHost = 10
                 })
             
-            // Add auth interceptor if token is available
             if (!token.isNullOrEmpty()) {
                 builder.addInterceptor(Interceptor { chain ->
                     val original = chain.request()

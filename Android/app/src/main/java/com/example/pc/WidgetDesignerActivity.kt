@@ -8,6 +8,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.*
@@ -67,7 +68,6 @@ class WidgetDesignerActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Handle Widget Configuration mode
         appWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID
@@ -83,7 +83,9 @@ class WidgetDesignerActivity : BaseActivity() {
                     selectedDevice = prefs.getString("DEVICE_IP", "") ?: ""
                     gridColumns = currentLayout.gridWidth
                     gridRows = currentLayout.gridHeight
-                } catch (e: Exception) {}
+                } catch (_: Exception) {
+                    Log.w("Designer", "битый json в prefs, начнём с чистого")
+                }
             }
         }
 
@@ -115,7 +117,6 @@ class WidgetDesignerActivity : BaseActivity() {
     }
 
     override fun onStatsUpdated(stats: PCStats) {
-        // Update live data in designer
         runOnUiThread {
             widgetViews.keys.forEach { card ->
                 val content = (card as? CardView)?.getChildAt(0)
@@ -140,10 +141,8 @@ class WidgetDesignerActivity : BaseActivity() {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, pos: Int, p3: Long) {
                 selectedDevice = devices[pos]
                 
-                // Read the stored auth token for this device
                 val token = prefs.getString("TOKEN_$selectedDevice", null)
                 
-                // Connect to WebSocket for live preview
                 webSocketManager?.disconnect()
                 webSocketManager = WebSocketManager(
                     gson = gson,
@@ -198,9 +197,6 @@ class WidgetDesignerActivity : BaseActivity() {
             gridColumns = currentLayout.gridWidth
             gridRows = currentLayout.gridHeight
 
-            // Maintain aspect ratio based on grid cells (assuming square cells for simplicity or standard 1:1 ratio)
-            // But usually widgets have a specific ratio. Let's use 3:2 as a base for 4x2 etc.
-            // Or better, just calculate based on columns/rows
             val cellRatio = 1.0f 
             val ratio = (gridColumns * cellRatio) / gridRows
             
@@ -330,7 +326,6 @@ class WidgetDesignerActivity : BaseActivity() {
         
         view.findViewById<TextView>(R.id.dialogTitle).text = if (isRussian) "Тема элемента:" else "Element Theme:"
         
-        // Map current theme to radio button
         when (config.theme) {
             "TURQUOISE" -> rgTheme.check(R.id.rbTurquoise)
             "ORANGE" -> rgTheme.check(R.id.rbOrange)
@@ -449,7 +444,6 @@ class WidgetDesignerActivity : BaseActivity() {
         view.layoutParams.width = config.width * cellWidth
         view.layoutParams.height = config.height * cellHeight
         
-        // Update the widget's internal layout logic (e.g. speedometers)
         val card = view as? CardView
         val content = card?.getChildAt(0)
         if (content is UpdatableWidget) {
@@ -549,9 +543,6 @@ class WidgetDesignerActivity : BaseActivity() {
             .show()
     }
 
-    private fun isControlButton(type: WidgetType): Boolean {
-        return type == WidgetType.ACTION_BUTTON
-    }
 
     private fun saveWidget() {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
@@ -579,7 +570,6 @@ class WidgetDesignerActivity : BaseActivity() {
         val layoutJson = gson.toJson(currentLayout)
 
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-            // Case 1: Configuration through system widget picker
             getSharedPreferences("WIDGET_PREFS_$appWidgetId", Context.MODE_PRIVATE).edit()
                 .putString("DEVICE_IP", selectedDevice)
                 .putString("LAYOUT_JSON", layoutJson)
@@ -595,10 +585,8 @@ class WidgetDesignerActivity : BaseActivity() {
             setResult(RESULT_OK, resultValue)
             finish()
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && appWidgetManager.isRequestPinAppWidgetSupported) {
-            // Case 2: Request Pin from inside the app
             val myProvider = ComponentName(this, PCGlanceWidgetReceiver::class.java)
             
-            // This is the extra data that will be received by onReceive when the widget is pinned
             val bundle = Bundle().apply {
                 putString("DEVICE_IP", selectedDevice)
                 putString("LAYOUT_JSON", layoutJson)

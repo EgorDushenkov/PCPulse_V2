@@ -28,7 +28,6 @@ class WebSocketManager(
 
     fun connect(url: String) {
         currentUrl = url
-        // Append token as query parameter for authentication
         val authenticatedUrl = if (!token.isNullOrEmpty()) {
             val separator = if (url.contains("?")) "&" else "?"
             "$url${separator}token=$token"
@@ -58,7 +57,7 @@ class WebSocketManager(
                 isConnected = false
                 Log.d("WebSocket", "Closing: $code / $reason")
                 
-                // Code 4001 means unauthorized — token is invalid
+                // 4001 = невалидный токен, нет смысла реконнектиться
                 if (code == 4001) {
                     Log.w("WebSocket", "Auth failed (4001), not reconnecting")
                     onStatusChanged?.invoke(false)
@@ -80,7 +79,7 @@ class WebSocketManager(
                 isConnected = false
                 Log.d("WebSocket", "Closed: $code / $reason")
                 
-                // Code 4001 means unauthorized — don't reconnect
+
                 if (code == 4001) {
                     Log.w("WebSocket", "Auth failed (4001), not reconnecting")
                     handler.post { onAuthFailed?.invoke() }

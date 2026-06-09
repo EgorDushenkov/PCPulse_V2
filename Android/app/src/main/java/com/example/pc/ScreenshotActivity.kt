@@ -12,6 +12,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
+import android.util.Log
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -22,7 +23,7 @@ class ScreenshotActivity : BaseActivity() {
 
     private lateinit var imageView: ImageView
     private lateinit var progressBar: ProgressBar
-    private var currentBitmap: Bitmap? = null
+    private var bitmap: Bitmap? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,7 +39,7 @@ class ScreenshotActivity : BaseActivity() {
         btnClose.text = if (isRussian) "Закрыть" else "Close"
 
         btnSave.setOnClickListener {
-            currentBitmap?.let { saveBitmapToGallery(it) }
+            bitmap?.let { saveBitmapToGallery(it) }
         }
         btnClose.setOnClickListener { finish() }
 
@@ -65,11 +66,12 @@ class ScreenshotActivity : BaseActivity() {
                                 runOnUiThread {
                                     progressBar.visibility = View.GONE
                                     if (bitmap != null) {
-                                        currentBitmap = bitmap
+                                        this@ScreenshotActivity.bitmap = bitmap
                                         imageView.setImageBitmap(bitmap)
                                     }
                                 }
                             } catch (e: Exception) {
+                                Log.e("Screenshot", "decode failed", e)
                                 runOnUiThread { progressBar.visibility = View.GONE }
                             }
                         }.start()
@@ -82,6 +84,7 @@ class ScreenshotActivity : BaseActivity() {
             }
 
             override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                Log.d("Screenshot", "request failed: ${t.message}")
                 progressBar.visibility = View.GONE
             }
         })
@@ -111,6 +114,8 @@ class ScreenshotActivity : BaseActivity() {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
                 Toast.makeText(this, if (isRussian) "Сохранено в галерею" else "Saved to gallery", Toast.LENGTH_SHORT).show()
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            // TODO: показать тост? пока молча глотаем
+        }
     }
 }

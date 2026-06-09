@@ -43,11 +43,11 @@ def main():
     mvn = os.path.join(root, MAVEN_DIR, "bin", "mvn.cmd")
     java_dir = os.path.join(root, "JavaServer")
 
-    print("=== 1. Worker (Python → EXE) ===")
+    print("=== 1. Worker (Python -> EXE) ===")
     run(["python", "-m", "PyInstaller", "--noconfirm", "--onefile",
          "--add-data", "OpenHardwareMonitorLib.dll;.", "worker.py"], cwd=root)
 
-    print("=== 2. Java Server (Maven → fat JAR) ===")
+    print("=== 2. Java Server (Maven -> fat JAR) ===")
     env = os.environ.copy()
     env["JAVA_HOME"] = os.path.join(root, JDK_DIR)
     run([mvn, "clean", "package"], cwd=java_dir, env=env)

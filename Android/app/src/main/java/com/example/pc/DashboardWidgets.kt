@@ -251,32 +251,32 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
 }
 
 class ControlsWidgetView(context: Context) : BaseWidgetView(context) {
-    private val btnScrenshot: ImageButton
+    private val btnScreenshot: ImageButton
     private val btnMic: ImageButton
     private val btnSleep: ImageButton
     private val btnShutdown: ImageButton
     private var isMuted = false
     
-    private var optimisticMute: Boolean? = null
-    private var optimisticMuteTime = 0L
-    private val OPTIMISTIC_TIMEOUT = 2500L
+    private var pendingMute: Boolean? = null
+    private var pendingMuteTime = 0L
+    private val PENDING_TIMEOUT = 2500L
 
     init {
         val v = LayoutInflater.from(context).inflate(R.layout.widget_controls, this, true)
-        btnScrenshot = v.findViewById(R.id.screenshot_button)
+        btnScreenshot = v.findViewById(R.id.screenshot_button)
         btnMic = v.findViewById(R.id.mic_button)
         btnSleep = v.findViewById(R.id.sleep_button)
         btnShutdown = v.findViewById(R.id.shutdown_button)
     }
     
     fun setCallbacks(onVibrate: () -> Unit, onScreenshot: () -> Unit, onMicMute: (Boolean) -> Unit, onSleep: () -> Unit, onShutdown: () -> Unit) {
-        btnScrenshot.setOnClickListener { onVibrate(); onScreenshot() }
+        btnScreenshot.setOnClickListener { onVibrate(); onScreenshot() }
         btnMic.setOnClickListener { 
             onVibrate()
             val newState = !isMuted
             isMuted = newState
-            optimisticMute = newState
-            optimisticMuteTime = System.currentTimeMillis()
+            pendingMute = newState
+            pendingMuteTime = System.currentTimeMillis()
             updateMicUI(newState)
             onMicMute(newState) 
         }
@@ -298,12 +298,12 @@ class ControlsWidgetView(context: Context) : BaseWidgetView(context) {
 
     override fun updateData(stats: PCStats) {
         val now = System.currentTimeMillis()
-        if (optimisticMute != null && now - optimisticMuteTime < OPTIMISTIC_TIMEOUT) {
-            isMuted = optimisticMute!!
+        if (pendingMute != null && now - pendingMuteTime < PENDING_TIMEOUT) {
+            isMuted = pendingMute!!
             updateMicUI(isMuted)
             return
         }
-        optimisticMute = null
+        pendingMute = null
         isMuted = stats.mic_muted
         updateMicUI(isMuted)
     }
@@ -328,9 +328,9 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
     private var onVibrate: (() -> Unit)? = null
     
     private var currentStatus: Int = 0
-    private var optimisticStatus: Int? = null
-    private var optimisticStatusTime = 0L
-    private val OPTIMISTIC_TIMEOUT = 2500L
+    private var pendingStatus: Int? = null
+    private var pendingStatusTime = 0L
+    private val PENDING_TIMEOUT = 2500L
     private var currentConfig: WidgetConfig? = null
 
     init {
@@ -407,8 +407,8 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
             onVibrate?.invoke()
             val newState = if (currentStatus == 4) 0 else 4 
             currentStatus = newState
-            optimisticStatus = newState
-            optimisticStatusTime = System.currentTimeMillis()
+            pendingStatus = newState
+            pendingStatusTime = System.currentTimeMillis()
             updatePlayPauseIcon(newState)
             onCommand?.invoke("play_pause") 
         }
@@ -457,10 +457,10 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
             artistText.text = media.artist
             
             val now = System.currentTimeMillis()
-            if (optimisticStatus != null && now - optimisticStatusTime < OPTIMISTIC_TIMEOUT) {
-                currentStatus = optimisticStatus!!
+            if (pendingStatus != null && now - pendingStatusTime < PENDING_TIMEOUT) {
+                currentStatus = pendingStatus!!
             } else {
-                optimisticStatus = null
+                pendingStatus = null
                 currentStatus = media.status
             }
             updatePlayPauseIcon(currentStatus)
@@ -503,8 +503,8 @@ class AudioMixerWidgetView @JvmOverloads constructor(
     private var onVibrate: (() -> Unit)? = null
     private val activeSliders = mutableSetOf<String>()
     
-    private val optimisticVolumes = mutableMapOf<String, Pair<Int, Long>>()
-    private val OPTIMISTIC_TIMEOUT = 3000L
+    private val pendingVolumes = mutableMapOf<String, Pair<Int, Long>>()
+    private val PENDING_TIMEOUT = 3000L
 
     init {
         val root = LinearLayout(context).apply { 
@@ -543,7 +543,6 @@ class AudioMixerWidgetView @JvmOverloads constructor(
         this.currentConfig = config
         val color = context.getWidgetColor(config.theme)
         titleText.setTextColor(color)
-        // Redraw container to apply color to seekbars
         invalidate() 
     }
 
@@ -553,7 +552,6 @@ class AudioMixerWidgetView @JvmOverloads constructor(
         val color = context.getWidgetColor(currentConfig?.theme)
         titleText.setTextColor(color)
         
-        // In widget mode, we often need a clean redraw because of the small space
         if (isWidgetMode) {
             container.removeAllViews()
             stats.audio_sessions.take(3).forEach { session -> // Take top 3 to fit in widget
@@ -635,7 +633,7 @@ class AudioMixerWidgetView @JvmOverloads constructor(
                     override fun onStopTrackingTouch(s: SeekBar?) {
                         activeSliders.remove(session.name)
                         val vol = slider.progress
-                        optimisticVolumes[session.name] = Pair(vol, System.currentTimeMillis())
+                        pendingVolumes[session.name] = Pair(vol, System.currentTimeMillis())
                         onVolumeChange?.invoke(session.name, vol)
                         onVibrate?.invoke()
                     }
@@ -670,11 +668,11 @@ class AudioMixerWidgetView @JvmOverloads constructor(
     
     private fun getVolToShow(name: String, serverVol: Int): Int {
         val now = System.currentTimeMillis()
-        val optimistic = optimisticVolumes[name]
-        return if (optimistic != null && now - optimistic.second < OPTIMISTIC_TIMEOUT) {
-            optimistic.first
+        val cached = pendingVolumes[name]
+        return if (cached != null && now - cached.second < PENDING_TIMEOUT) {
+            cached.first
         } else {
-            optimisticVolumes.remove(name)
+            pendingVolumes.remove(name)
             serverVol
         }
     }
@@ -893,7 +891,6 @@ abstract class SpeedometerWidgetView(context: Context) : BaseWidgetView(context)
     private fun applyLayoutRules() {
         val config = currentConfig ?: return
         val isHorizontal = config.width > 2
-        // Always show label as requested by user
         labelText.visibility = View.VISIBLE
         (labelText.parent as? ViewGroup)?.removeView(labelText)
         (speedometer.parent as? ViewGroup)?.removeView(speedometer)

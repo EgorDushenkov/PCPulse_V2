@@ -27,11 +27,11 @@ import kotlin.math.roundToInt
 @SuppressLint("ClickableViewAccessibility")
 class CustomDashboardActivity : BaseActivity() {
 
-    private lateinit var dashboardCanvas: FrameLayout
-    private lateinit var controlPanel: LinearLayout
-    private lateinit var editDashboardButton: Button
-    private lateinit var addWidgetButton: Button
-    private lateinit var addWidgetCard: CardView
+    private lateinit var canvas: FrameLayout
+    private lateinit var controls: LinearLayout
+    private lateinit var btnEdit: Button
+    private lateinit var btnAdd: Button
+    private lateinit var addCard: CardView
 
     private var isEditMode = false
     private lateinit var testLayout: DashboardLayout
@@ -63,25 +63,25 @@ class CustomDashboardActivity : BaseActivity() {
         deviceIp = intent.getStringExtra("DEVICE_IP") ?: ""
         hideSystemUI()
 
-        dashboardCanvas = findViewById(R.id.dashboard_canvas)
-        controlPanel = findViewById(R.id.control_panel)
-        editDashboardButton = findViewById(R.id.edit_dashboard_button)
-        addWidgetButton = findViewById(R.id.add_widget_button)
-        addWidgetCard = findViewById(R.id.add_widget_card)
+        canvas = findViewById(R.id.dashboard_canvas)
+        controls = findViewById(R.id.control_panel)
+        btnEdit = findViewById(R.id.edit_dashboard_button)
+        btnAdd = findViewById(R.id.add_widget_button)
+        addCard = findViewById(R.id.add_widget_card)
 
-        editDashboardButton.setOnClickListener {
+        btnEdit.setOnClickListener {
             vibrate()
             toggleEditMode() 
         }
-        addWidgetButton.setOnClickListener { 
+        btnAdd.setOnClickListener { 
             vibrate()
             showAddWidgetDialog() 
         }
 
-        dashboardCanvas.post {
-            cellWidth = dashboardCanvas.width / gridColumns
-            cellHeight = dashboardCanvas.height / gridRows
-            dashboardCanvas.background = GridDrawable()
+        canvas.post {
+            cellWidth = canvas.width / gridColumns
+            cellHeight = canvas.height / gridRows
+            canvas.background = GridDrawable()
             testLayout = loadDashboardLayout()
             displayDashboard(testLayout)
         }
@@ -136,15 +136,15 @@ class CustomDashboardActivity : BaseActivity() {
     private fun toggleEditMode() {
         isEditMode = !isEditMode
         if (!isEditMode) saveDashboardLayout()
-        editDashboardButton.text = if (isEditMode) "✓" else "✎"
-        addWidgetCard.visibility = if (isEditMode) View.VISIBLE else View.GONE
-        dashboardCanvas.invalidate()
+        btnEdit.text = if (isEditMode) "✓" else "✎"
+        addCard.visibility = if (isEditMode) View.VISIBLE else View.GONE
+        canvas.invalidate()
         resizeHandles.values.forEach { it.visibility = if (isEditMode) View.VISIBLE else View.GONE }
         deleteHandles.values.forEach { it.visibility = if (isEditMode) View.VISIBLE else View.GONE }
     }
 
     private fun displayDashboard(layout: DashboardLayout) {
-        dashboardCanvas.removeAllViews()
+        canvas.removeAllViews()
         widgetViews.clear()
         resizeHandles.clear()
         deleteHandles.clear()
@@ -152,7 +152,7 @@ class CustomDashboardActivity : BaseActivity() {
         layout.widgets.forEach { config ->
             val widgetView = createWidget(config) ?: return@forEach
             widgetView.id = View.generateViewId()
-            dashboardCanvas.addView(widgetView, 0)
+            canvas.addView(widgetView, 0)
             widgetViews[widgetView] = config
 
             setupDragAndDrop(widgetView)
@@ -161,14 +161,14 @@ class CustomDashboardActivity : BaseActivity() {
                 val typedValue = android.util.TypedValue()
                 theme.resolveAttribute(androidx.appcompat.R.attr.colorPrimary, typedValue, true)
                 typedValue.data
-            } catch (e: Exception) { Color.BLUE }
+            } catch (_: Exception) { Color.BLUE }
 
             val rh = createHandle(widgetView, android.R.drawable.ic_menu_crop, themeColor, 0.5f) { e -> handleResize(widgetView, e) }
-            dashboardCanvas.addView(rh)
+            canvas.addView(rh)
             resizeHandles[widgetView] = rh
 
             val dh = createHandle(widgetView, android.R.drawable.ic_menu_delete, Color.parseColor("#80FF4040"), 1f) { showDeleteDialog(widgetView) }
-            dashboardCanvas.addView(dh)
+            canvas.addView(dh)
             deleteHandles[widgetView] = dh
 
             applyWidgetLayout(widgetView, config, false)
