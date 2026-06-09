@@ -28,7 +28,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Кнопка Настройки слева -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_settings"
         android:layout_width="wrap_content"
@@ -40,7 +39,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Кнопка Добавить справа -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add"
         android:layout_width="wrap_content"

@@ -8,13 +8,11 @@
     android:background="@color/dark_bg"
     tools:context=".CustomDashboardActivity">
 
-    <!-- Холст на весь экран -->
     <FrameLayout
         android:id="@+id/dashboard_canvas"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Панель управления: сдвинута от краев и поднята по Z -->
     <LinearLayout
         android:id="@+id/control_panel"
         android:layout_width="wrap_content"

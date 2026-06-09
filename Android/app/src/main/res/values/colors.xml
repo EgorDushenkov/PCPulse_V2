@@ -10,13 +10,13 @@
     <color name="text_white_secondary">#B0B0B0</color>
     <color name="text_gray">#A0A0A0</color>
 
-    <!-- Основная палитра -->
+
     <color name="purple">#BA55D3</color>
     <color name="turquoise">#03DAC5</color>
     <color name="neon_orange">#FF8C00</color>
     <color name="matrix_green">#00FF41</color>
 
-    <!-- Переназначение системных цветов (для совместимости) -->
+
     <color name="accent_neon">@color/turquoise</color>
     <color name="color_cpu">@color/purple</color>
     <color name="color_gpu">@color/purple</color>
