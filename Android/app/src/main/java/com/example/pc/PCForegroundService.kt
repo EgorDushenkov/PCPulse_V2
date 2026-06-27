@@ -95,8 +95,15 @@ class PCForegroundService : Service() {
                             if (action != null) socket?.sendCommand("run", mapOf("path" to action))
                         }
                         "mute_mic", "set_mic_mute" -> {
-                            val mute = if (action != null) action == "1" else true // Default to toggle or specific
+                            val mute = if (action != null) action == "1" else true
                             socket?.sendCommand("set_mic_mute", mapOf("mute" to if (mute) 1 else 0))
+                        }
+                        "key_press" -> {
+                            val keysString = intent.getStringExtra("KEYS")
+                            if (keysString != null) {
+                                val keysList = keysString.split("+")
+                                socket?.sendCommand("key_press", mapOf("keys" to keysList))
+                            }
                         }
                         "screenshot" -> socket?.sendCommand("screenshot")
                         "sleep" -> socket?.sendCommand("sleep")

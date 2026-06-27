@@ -269,7 +269,8 @@ class WidgetDesignerActivity : BaseActivity() {
             onMediaCommand = { cmd -> sendMediaCommand(cmd) },
             onRunCommand = { path -> sendRunCommand(path) },
             onMinimizeCommand = { sendMinimizeCommand() },
-            onCloseCommand = { name -> sendCloseAppCommand(name) }
+            onCloseCommand = { name -> sendCloseAppCommand(name) },
+            onKeyPressCommand = { keys -> sendKeyPressCommand(keys) }
         )
         
         val card = CardView(this).apply {
@@ -309,13 +310,19 @@ class WidgetDesignerActivity : BaseActivity() {
         webSocketManager?.sendCommand("close_app", mapOf("name" to appName))
     }
 
+    private fun sendKeyPressCommand(keys: List<String>) {
+        webSocketManager?.sendCommand("key_press", mapOf("keys" to keys))
+    }
+
     private fun showWidgetSettingsDialog(config: WidgetConfig) {
         if (config.type == WidgetType.ACTION_BUTTON) {
-            showActionButtonConfigDialog(config) { label, path, useIcon, theme ->
-                config.label = label
-                config.action = path
-                config.useIcon = useIcon
-                config.theme = theme
+            showActionButtonConfigDialog(config) { updatedConfig ->
+                config.label = updatedConfig.label
+                config.action = updatedConfig.action
+                config.useIcon = updatedConfig.useIcon
+                config.theme = updatedConfig.theme
+                config.actionMode = updatedConfig.actionMode
+                config.keys = updatedConfig.keys
                 refreshWidgets()
             }
             return
@@ -484,8 +491,8 @@ class WidgetDesignerActivity : BaseActivity() {
             .setItems(names) { _, i ->
                 val type = types[i]
                 if (type == WidgetType.ACTION_BUTTON) {
-                    showActionButtonConfigDialog(null) { label, path, useIcon, theme ->
-                        val newConfig = WidgetConfig(type, 0, 0, 1, 1, label, path, useIcon, deviceIp = selectedDevice, theme = theme)
+                    showActionButtonConfigDialog(null) { newConfig ->
+                        newConfig.deviceIp = selectedDevice
                         currentLayout = currentLayout.copy(widgets = currentLayout.widgets + newConfig)
                         refreshWidgets()
                     }
@@ -505,7 +512,7 @@ class WidgetDesignerActivity : BaseActivity() {
             .show()
     }
 
-    private fun showActionButtonConfigDialog(config: WidgetConfig?, onSave: (String, String, Boolean, String?) -> Unit) {
+    private fun showActionButtonConfigDialog(config: WidgetConfig?, onSave: (WidgetConfig) -> Unit) {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val view = layoutInflater.inflate(R.layout.dialog_widget_settings, null)
         
@@ -513,10 +520,29 @@ class WidgetDesignerActivity : BaseActivity() {
         val etAction = view.findViewById<EditText>(R.id.etAction)
         val cbUseIcon = view.findViewById<CheckBox>(R.id.cbUseIcon)
         val rgTheme = view.findViewById<RadioGroup>(R.id.rgTheme)
-        
+        val rgActionMode = view.findViewById<RadioGroup>(R.id.rgActionMode)
+        val launchGroup = view.findViewById<LinearLayout>(R.id.launchGroup)
+        val keypressGroup = view.findViewById<LinearLayout>(R.id.keypressGroup)
+        val keysContainer = view.findViewById<LinearLayout>(R.id.keysContainer)
+        val btnAddKey = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnAddKey)
+        val tvModeTitle = view.findViewById<TextView>(R.id.tvModeTitle)
+        val tvKeysTitle = view.findViewById<TextView>(R.id.tvKeysTitle)
+
+        view.findViewById<android.widget.RadioButton>(R.id.rbLaunch).text = if (isRussian) "Запуск" else "Launch"
+        view.findViewById<android.widget.RadioButton>(R.id.rbKeypress).text = if (isRussian) "Нажатие" else "Keypress"
+        tvModeTitle.text = if (isRussian) "Режим:" else "Mode:"
+        tvKeysTitle.text = if (isRussian) "Комбинация клавиш:" else "Key combination:"
+        btnAddKey.text = if (isRussian) "+ Добавить клавишу" else "+ Add key"
+        view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.labelInputLayout).hint = if (isRussian) "Название / Метка" else "Label"
+        view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.actionInputLayout).hint = if (isRussian) "Путь / Действие" else "Path / Action"
+        cbUseIcon.text = if (isRussian) "Использовать иконку вместо текста" else "Use icon instead of text"
+
+        val selectedKeys = mutableListOf<String>()
+
         etLabel.setText(config?.label ?: "")
         etAction.setText(config?.action ?: "")
         cbUseIcon.isChecked = config?.useIcon ?: false
+        config?.keys?.let { selectedKeys.addAll(it) }
         
         when (config?.theme) {
             "TURQUOISE" -> rgTheme.check(R.id.rbTurquoise)
@@ -524,6 +550,60 @@ class WidgetDesignerActivity : BaseActivity() {
             "GREEN" -> rgTheme.check(R.id.rbGreen)
             "PURPLE" -> rgTheme.check(R.id.rbPurple)
             else -> rgTheme.check(R.id.rbDefault)
+        }
+
+        fun refreshKeysUI() {
+            keysContainer.removeAllViews()
+            selectedKeys.forEachIndexed { index, key ->
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(0, 4, 0, 4)
+                }
+                val label = TextView(this).apply {
+                    text = if (index > 0) " + $key" else key
+                    textSize = 16f
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                val btnRemove = com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialIconButtonStyle).apply {
+                    text = "✕"
+                    textSize = 14f
+                    setOnClickListener {
+                        selectedKeys.removeAt(index)
+                        refreshKeysUI()
+                    }
+                }
+                row.addView(label)
+                row.addView(btnRemove)
+                keysContainer.addView(row)
+            }
+        }
+
+        fun switchMode(isKeypress: Boolean) {
+            launchGroup.visibility = if (isKeypress) android.view.View.GONE else android.view.View.VISIBLE
+            keypressGroup.visibility = if (isKeypress) android.view.View.VISIBLE else android.view.View.GONE
+        }
+
+        val isKeypress = config?.actionMode == "keypress"
+        if (isKeypress) rgActionMode.check(R.id.rbKeypress) else rgActionMode.check(R.id.rbLaunch)
+        switchMode(isKeypress)
+        refreshKeysUI()
+
+        rgActionMode.setOnCheckedChangeListener { _, checkedId ->
+            switchMode(checkedId == R.id.rbKeypress)
+        }
+
+        btnAddKey.setOnClickListener {
+            val keys = getAvailableKeys()
+            val keyNames = keys.map { it.second }.toTypedArray()
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(if (isRussian) "Выберите клавишу" else "Select key")
+                .setItems(keyNames) { _, which ->
+                    selectedKeys.add(keys[which].first)
+                    refreshKeysUI()
+                }
+                .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
+                .show()
         }
 
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
@@ -537,10 +617,47 @@ class WidgetDesignerActivity : BaseActivity() {
                     R.id.rbPurple -> "PURPLE"
                     else -> null
                 }
-                onSave(etLabel.text.toString(), etAction.text.toString(), cbUseIcon.isChecked, selectedTheme)
+                val mode = if (rgActionMode.checkedRadioButtonId == R.id.rbKeypress) "keypress" else "launch"
+                val result = WidgetConfig(
+                    type = WidgetType.ACTION_BUTTON,
+                    x = config?.x ?: 0,
+                    y = config?.y ?: 0,
+                    width = config?.width ?: 1,
+                    height = config?.height ?: 1,
+                    label = etLabel.text.toString(),
+                    action = if (mode == "launch") etAction.text.toString() else null,
+                    useIcon = if (mode == "launch") cbUseIcon.isChecked else false,
+                    theme = selectedTheme,
+                    actionMode = mode,
+                    keys = if (mode == "keypress") selectedKeys.toList() else null
+                )
+                onSave(result)
             }
             .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
             .show()
+    }
+
+    private fun getAvailableKeys(): List<Pair<String, String>> {
+        return listOf(
+            "ctrl" to "Ctrl", "alt" to "Alt", "shift" to "Shift", "win" to "Win",
+            "a" to "A", "b" to "B", "c" to "C", "d" to "D", "e" to "E",
+            "f" to "F", "g" to "G", "h" to "H", "i" to "I", "j" to "J",
+            "k" to "K", "l" to "L", "m" to "M", "n" to "N", "o" to "O",
+            "p" to "P", "q" to "Q", "r" to "R", "s" to "S", "t" to "T",
+            "u" to "U", "v" to "V", "w" to "W", "x" to "X", "y" to "Y", "z" to "Z",
+            "0" to "0", "1" to "1", "2" to "2", "3" to "3", "4" to "4",
+            "5" to "5", "6" to "6", "7" to "7", "8" to "8", "9" to "9",
+            "f1" to "F1", "f2" to "F2", "f3" to "F3", "f4" to "F4",
+            "f5" to "F5", "f6" to "F6", "f7" to "F7", "f8" to "F8",
+            "f9" to "F9", "f10" to "F10", "f11" to "F11", "f12" to "F12",
+            "up" to "↑ Up", "down" to "↓ Down", "left" to "← Left", "right" to "→ Right",
+            "enter" to "Enter", "space" to "Space", "tab" to "Tab",
+            "escape" to "Escape", "backspace" to "Backspace", "delete" to "Delete",
+            "home" to "Home", "end" to "End", "pageup" to "Page Up", "pagedown" to "Page Down",
+            "insert" to "Insert", "printscreen" to "Print Screen", "pause" to "Pause",
+            "volumeup" to "Volume Up", "volumedown" to "Volume Down", "volumemute" to "Volume Mute",
+            "playpause" to "Play/Pause", "nexttrack" to "Next Track", "prevtrack" to "Prev Track"
+        )
     }
 
 

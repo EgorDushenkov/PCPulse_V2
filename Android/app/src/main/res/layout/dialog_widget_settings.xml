@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+<LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -25,32 +29,99 @@
             android:singleLine="true" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/actionInputLayout"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
+    <!-- Переключатель режима: Запуск / Нажатие -->
+    <TextView
+        android:id="@+id/tvModeTitle"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:hint="Путь / Действие"
-        app:boxCornerRadiusBottomEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusTopStart="12dp">
+        android:text="Режим:"
+        android:textSize="12sp" />
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etAction"
+    <RadioGroup
+        android:id="@+id/rgActionMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <RadioButton
+            android:id="@+id/rbLaunch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Запуск"
+            android:checked="true" />
+        <RadioButton
+            android:id="@+id/rbKeypress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Нажатие" />
+    </RadioGroup>
+
+    <!-- Группа полей режима "Запуск" -->
+    <LinearLayout
+        android:id="@+id/launchGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/actionInputLayout"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="text"
-            android:singleLine="true" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:layout_marginTop="8dp"
+            android:hint="Путь / Действие"
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusTopStart="12dp">
 
-    <com.google.android.material.checkbox.MaterialCheckBox
-        android:id="@+id/cbUseIcon"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:singleLine="true" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cbUseIcon"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Использовать иконку вместо текста" />
+    </LinearLayout>
+
+    <!-- Группа полей режима "Нажатие" -->
+    <LinearLayout
+        android:id="@+id/keypressGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Использовать иконку вместо текста" />
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvKeysTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Комбинация клавиш:"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/keysContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddKey"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="+ Добавить клавишу" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="wrap_content"
@@ -77,3 +148,4 @@
     </HorizontalScrollView>
 
 </LinearLayout>
+</ScrollView>

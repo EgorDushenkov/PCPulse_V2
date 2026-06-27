@@ -231,6 +231,38 @@ def audio_loop():
                     except Exception as e:
                         _log(f"[run] упало: {e}")
 
+                elif action == "key_press":
+                    import ctypes
+                    
+                    VK_MAP = {
+                        'ctrl': 0x11, 'alt': 0x12, 'shift': 0x10, 'win': 0x5B,
+                        'up': 0x26, 'down': 0x28, 'left': 0x25, 'right': 0x27,
+                        'enter': 0x0D, 'space': 0x20, 'tab': 0x09, 'escape': 0x1B,
+                        'backspace': 0x08, 'delete': 0x2E, 'home': 0x24, 'end': 0x23,
+                        'pageup': 0x21, 'pagedown': 0x22, 'insert': 0x2D, 'printscreen': 0x2C, 'pause': 0x13,
+                        'volumeup': 0xAF, 'volumedown': 0xAE, 'volumemute': 0xAD,
+                        'playpause': 0xB3, 'nexttrack': 0xB0, 'prevtrack': 0xB1
+                    }
+                    for c in range(26): VK_MAP[chr(ord('a') + c)] = 0x41 + c
+                    for c in range(10): VK_MAP[str(c)] = 0x30 + c
+                    for c in range(1, 13): VK_MAP[f'f{c}'] = 0x6F + c
+
+                    keys = cmd.get("keys", [])
+                    if keys:
+                        _log(f"[keypress] {keys}")
+                        try:
+                            for k in keys:
+                                vk = VK_MAP.get(k.lower())
+                                if vk: ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+                                
+                            for k in reversed(keys):
+                                vk = VK_MAP.get(k.lower())
+                                if vk: ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+                                
+                            _log("[keypress] ok")
+                        except Exception as e:
+                            _log(f"[keypress] error: {e}")
+
                 elif action == "shutdown":
                     _log("[power] shutdown")
                     os.system("shutdown /s /t 1")

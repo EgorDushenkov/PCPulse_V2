@@ -125,26 +125,36 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
         onVibrate: () -> Unit,
         onRun: (String) -> Unit,
         onMinimize: () -> Unit,
-        onClose: (String) -> Unit
+        onClose: (String) -> Unit,
+        onKeyPress: ((List<String>) -> Unit)? = null
     ) {
         this.config = config
         updateUI()
         
         button.setOnClickListener {
             onVibrate()
-            val path = config.action ?: return@setOnClickListener
-            if (appState == 2) {
-                onMinimize()
+            if (config.actionMode == "keypress") {
+                val keys = config.keys
+                if (!keys.isNullOrEmpty()) {
+                    onKeyPress?.invoke(keys)
+                }
             } else {
-                onRun(path)
+                val path = config.action ?: return@setOnClickListener
+                if (appState == 2) {
+                    onMinimize()
+                } else {
+                    onRun(path)
+                }
             }
         }
 
         button.setOnLongClickListener {
-            onVibrate()
-            config.action?.let { path ->
-                val fileName = path.split("\\", "/").last().lowercase()
-                onClose(fileName)
+            if (config.actionMode != "keypress") {
+                onVibrate()
+                config.action?.let { path ->
+                    val fileName = path.split("\\", "/").last().lowercase()
+                    onClose(fileName)
+                }
             }
             true
         }
@@ -160,7 +170,15 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
 
     private fun updateUI() {
         val cfg = config ?: return
-        if (cfg.useIcon && !cfg.action.isNullOrEmpty()) {
+        if (cfg.actionMode == "keypress") {
+            // В режиме нажатия показываем метку или комбинацию клавиш
+            iconView.visibility = View.GONE
+            try {
+                Glide.with(context.applicationContext).clear(iconView)
+            } catch (e: Exception) {}
+            val keysText = cfg.keys?.joinToString(" + ") { it.uppercase() }
+            button.text = cfg.label?.takeIf { it.isNotEmpty() } ?: keysText ?: "Key"
+        } else if (cfg.useIcon && !cfg.action.isNullOrEmpty()) {
             button.text = ""
             iconView.visibility = View.VISIBLE
             
@@ -208,6 +226,9 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
     }
 
     override fun updateData(stats: PCStats) {
+        // В режиме keypress нет привязки к процессу
+        if (config?.actionMode == "keypress") return
+
         val path = config?.action ?: return
         val fileName = path.split("\\", "/").last().lowercase()
 
@@ -233,6 +254,8 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (appState == 0) return
+        // В режиме keypress не рисуем бордюр
+        if (config?.actionMode == "keypress") return
 
         borderPaint.color = context.getWidgetColor(config?.theme)
         val margin = borderPaint.strokeWidth / 2f
@@ -1032,7 +1055,8 @@ object WidgetFactory {
         onRunCommand: ((String) -> Unit)? = null,
         onMediaCommand: ((String) -> Unit)? = null,
         onMinimizeCommand: (() -> Unit)? = null,
-        onCloseCommand: ((String) -> Unit)? = null
+        onCloseCommand: ((String) -> Unit)? = null,
+        onKeyPressCommand: ((List<String>) -> Unit)? = null
     ): View {
         return when (config.type) {
             WidgetType.COOLING -> CoolingWidgetView(context).apply { updateConfig(config) }
@@ -1045,7 +1069,7 @@ object WidgetFactory {
             WidgetType.GPU -> GpuWidgetView(context).apply { updateConfig(config) }
             WidgetType.NETWORK -> NetworkWidgetView(context).apply { updateConfig(config) }
             WidgetType.ACTION_BUTTON -> ActionButtonWidgetView(context).apply {
-                setup(config, onVibrate, onRunCommand ?: {}, onMinimizeCommand ?: {}, onCloseCommand ?: {})
+                setup(config, onVibrate, onRunCommand ?: {}, onMinimizeCommand ?: {}, onCloseCommand ?: {}, onKeyPressCommand)
                 updateConfig(config)
             }
             WidgetType.MEDIA_PLAYER -> MediaPlayerWidgetView(context, isWidget).apply {

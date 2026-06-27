@@ -205,12 +205,16 @@ class PCGlanceWidget : GlanceAppWidget() {
                                             }
                                         }
                                     } else if (widget.type == WidgetType.ACTION_BUTTON) {
+                                        val isKeypress = widget.actionMode == "keypress"
+                                        val actionType = if (isKeypress) "key_press" else "action_button"
+                                        val actionValue = if (isKeypress) widget.keys?.joinToString("+") ?: "" else widget.action ?: ""
+                                        
                                         Box(modifier = GlanceModifier.fillMaxSize().clickable(
                                             actionRunCallback<OptimisticWidgetAction>(
                                                 actionParametersOf(
                                                     OptimisticWidgetAction.ipKey to deviceIp,
-                                                    OptimisticWidgetAction.actionTypeKey to "action_button",
-                                                    OptimisticWidgetAction.actionValueKey to (widget.action ?: "")
+                                                    OptimisticWidgetAction.actionTypeKey to actionType,
+                                                    OptimisticWidgetAction.actionValueKey to actionValue
                                                 )
                                             )
                                         )) {}
@@ -349,7 +353,7 @@ class OptimisticWidgetAction : ActionCallback {
                                 stats.copy(media = stats.media?.copy(status = newStatus))
                             } else stats
                         }
-                        "action_button" -> stats
+                        "action_button", "key_press" -> stats
                         else -> stats
                     }
                     if (updated) {
@@ -377,6 +381,9 @@ class OptimisticWidgetAction : ActionCallback {
                     putExtra("action_type", "run")
                     putExtra("ACTION", actionValue)
                 }
+            } else if (actionType == "key_press") {
+                putExtra("action_type", "key_press")
+                if (!actionValue.isNullOrEmpty()) putExtra("KEYS", actionValue)
             } else {
                 putExtra("action_type", actionType)
                 if (!actionValue.isNullOrEmpty()) putExtra("ACTION", actionValue)

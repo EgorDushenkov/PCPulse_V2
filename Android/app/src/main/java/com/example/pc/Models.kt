@@ -61,7 +61,9 @@ data class WidgetConfig(
     @SerializedName("action") var action: String? = null,
     @SerializedName("use_icon") var useIcon: Boolean = false,
     @SerializedName("device_ip") var deviceIp: String? = null,
-    @SerializedName("theme") var theme: String? = null
+    @SerializedName("theme") var theme: String? = null,
+    @SerializedName("action_mode") var actionMode: String? = "launch",
+    @SerializedName("keys") var keys: List<String>? = null
 )
 
 data class DashboardLayout(

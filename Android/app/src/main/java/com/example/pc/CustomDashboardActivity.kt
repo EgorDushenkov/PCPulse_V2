@@ -234,9 +234,8 @@ class CustomDashboardActivity : BaseActivity() {
                 vibrate()
                 val type = types[which]
                 if (type == WidgetType.ACTION_BUTTON) {
-                    showActionButtonConfigDialog { label, path, useIcon, theme ->
-                        val new = WidgetConfig(type, 0, 0, 2, 2, label, path, useIcon, theme = theme)
-                        testLayout = testLayout.copy(widgets = testLayout.widgets + new)
+                    showActionButtonConfigDialog(null) { config ->
+                        testLayout = testLayout.copy(widgets = testLayout.widgets + config)
                         displayDashboard(testLayout)
                     }
                 } else {
@@ -303,7 +302,7 @@ class CustomDashboardActivity : BaseActivity() {
             .show()
     }
 
-    private fun showActionButtonConfigDialog(onSave: (String, String, Boolean, String?) -> Unit) {
+    private fun showActionButtonConfigDialog(existing: WidgetConfig?, onSave: (WidgetConfig) -> Unit) {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val view = layoutInflater.inflate(R.layout.dialog_widget_settings, null)
         
@@ -311,7 +310,93 @@ class CustomDashboardActivity : BaseActivity() {
         val etAction = view.findViewById<EditText>(R.id.etAction)
         val cbUseIcon = view.findViewById<CheckBox>(R.id.cbUseIcon)
         val rgTheme = view.findViewById<RadioGroup>(R.id.rgTheme)
-        
+        val rgActionMode = view.findViewById<RadioGroup>(R.id.rgActionMode)
+        val launchGroup = view.findViewById<LinearLayout>(R.id.launchGroup)
+        val keypressGroup = view.findViewById<LinearLayout>(R.id.keypressGroup)
+        val keysContainer = view.findViewById<LinearLayout>(R.id.keysContainer)
+        val btnAddKey = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnAddKey)
+        val tvModeTitle = view.findViewById<TextView>(R.id.tvModeTitle)
+        val tvKeysTitle = view.findViewById<TextView>(R.id.tvKeysTitle)
+
+        view.findViewById<android.widget.RadioButton>(R.id.rbLaunch).text = if (isRussian) "Запуск" else "Launch"
+        view.findViewById<android.widget.RadioButton>(R.id.rbKeypress).text = if (isRussian) "Нажатие" else "Keypress"
+        tvModeTitle.text = if (isRussian) "Режим:" else "Mode:"
+        tvKeysTitle.text = if (isRussian) "Комбинация клавиш:" else "Key combination:"
+        btnAddKey.text = if (isRussian) "+ Добавить клавишу" else "+ Add key"
+        view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.labelInputLayout).hint = if (isRussian) "Название / Метка" else "Label"
+        view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.actionInputLayout).hint = if (isRussian) "Путь / Действие" else "Path / Action"
+        (view.findViewById<CheckBox>(R.id.cbUseIcon)).text = if (isRussian) "Использовать иконку вместо текста" else "Use icon instead of text"
+
+        val selectedKeys = mutableListOf<String>()
+
+        // Заполнение при редактировании
+        etLabel.setText(existing?.label ?: "")
+        etAction.setText(existing?.action ?: "")
+        cbUseIcon.isChecked = existing?.useIcon ?: false
+        existing?.keys?.let { selectedKeys.addAll(it) }
+        when (existing?.theme) {
+            "TURQUOISE" -> rgTheme.check(R.id.rbTurquoise)
+            "ORANGE" -> rgTheme.check(R.id.rbOrange)
+            "GREEN" -> rgTheme.check(R.id.rbGreen)
+            "PURPLE" -> rgTheme.check(R.id.rbPurple)
+            else -> rgTheme.check(R.id.rbDefault)
+        }
+
+        fun refreshKeysUI() {
+            keysContainer.removeAllViews()
+            selectedKeys.forEachIndexed { index, key ->
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(0, 4, 0, 4)
+                }
+                val label = TextView(this).apply {
+                    text = if (index > 0) " + $key" else key
+                    textSize = 16f
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                val btnRemove = com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialIconButtonStyle).apply {
+                    text = "✕"
+                    textSize = 14f
+                    setOnClickListener {
+                        selectedKeys.removeAt(index)
+                        refreshKeysUI()
+                    }
+                }
+                row.addView(label)
+                row.addView(btnRemove)
+                keysContainer.addView(row)
+            }
+        }
+
+        fun switchMode(isKeypress: Boolean) {
+            launchGroup.visibility = if (isKeypress) android.view.View.GONE else android.view.View.VISIBLE
+            keypressGroup.visibility = if (isKeypress) android.view.View.VISIBLE else android.view.View.GONE
+        }
+
+        // Инициализация режима
+        val isKeypress = existing?.actionMode == "keypress"
+        if (isKeypress) rgActionMode.check(R.id.rbKeypress) else rgActionMode.check(R.id.rbLaunch)
+        switchMode(isKeypress)
+        refreshKeysUI()
+
+        rgActionMode.setOnCheckedChangeListener { _, checkedId ->
+            switchMode(checkedId == R.id.rbKeypress)
+        }
+
+        btnAddKey.setOnClickListener {
+            val keys = getAvailableKeys()
+            val keyNames = keys.map { it.second }.toTypedArray()
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(if (isRussian) "Выберите клавишу" else "Select key")
+                .setItems(keyNames) { _, which ->
+                    selectedKeys.add(keys[which].first)
+                    refreshKeysUI()
+                }
+                .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
+                .show()
+        }
+
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(if (isRussian) "Настройка кнопки" else "Button Settings")
             .setView(view)
@@ -324,10 +409,54 @@ class CustomDashboardActivity : BaseActivity() {
                     R.id.rbPurple -> "PURPLE"
                     else -> null
                 }
-                onSave(etLabel.text.toString(), etAction.text.toString(), cbUseIcon.isChecked, selectedTheme)
+                val mode = if (rgActionMode.checkedRadioButtonId == R.id.rbKeypress) "keypress" else "launch"
+                val config = WidgetConfig(
+                    type = WidgetType.ACTION_BUTTON,
+                    x = existing?.x ?: 0,
+                    y = existing?.y ?: 0,
+                    width = existing?.width ?: 2,
+                    height = existing?.height ?: 2,
+                    label = etLabel.text.toString(),
+                    action = if (mode == "launch") etAction.text.toString() else null,
+                    useIcon = if (mode == "launch") cbUseIcon.isChecked else false,
+                    theme = selectedTheme,
+                    actionMode = mode,
+                    keys = if (mode == "keypress") selectedKeys.toList() else null
+                )
+                onSave(config)
             }
             .setNegativeButton(if (isRussian) "Отмена" else "Cancel", null)
             .show()
+    }
+
+    private fun getAvailableKeys(): List<Pair<String, String>> {
+        return listOf(
+            // Модификаторы
+            "ctrl" to "Ctrl", "alt" to "Alt", "shift" to "Shift", "win" to "Win",
+            // Буквы
+            "a" to "A", "b" to "B", "c" to "C", "d" to "D", "e" to "E",
+            "f" to "F", "g" to "G", "h" to "H", "i" to "I", "j" to "J",
+            "k" to "K", "l" to "L", "m" to "M", "n" to "N", "o" to "O",
+            "p" to "P", "q" to "Q", "r" to "R", "s" to "S", "t" to "T",
+            "u" to "U", "v" to "V", "w" to "W", "x" to "X", "y" to "Y", "z" to "Z",
+            // Цифры
+            "0" to "0", "1" to "1", "2" to "2", "3" to "3", "4" to "4",
+            "5" to "5", "6" to "6", "7" to "7", "8" to "8", "9" to "9",
+            // F-клавиши
+            "f1" to "F1", "f2" to "F2", "f3" to "F3", "f4" to "F4",
+            "f5" to "F5", "f6" to "F6", "f7" to "F7", "f8" to "F8",
+            "f9" to "F9", "f10" to "F10", "f11" to "F11", "f12" to "F12",
+            // Стрелки
+            "up" to "↑ Up", "down" to "↓ Down", "left" to "← Left", "right" to "→ Right",
+            // Специальные
+            "enter" to "Enter", "space" to "Space", "tab" to "Tab",
+            "escape" to "Escape", "backspace" to "Backspace", "delete" to "Delete",
+            "home" to "Home", "end" to "End", "pageup" to "Page Up", "pagedown" to "Page Down",
+            "insert" to "Insert", "printscreen" to "Print Screen", "pause" to "Pause",
+            // Мультимедиа
+            "volumeup" to "Volume Up", "volumedown" to "Volume Down", "volumemute" to "Volume Mute",
+            "playpause" to "Play/Pause", "nexttrack" to "Next Track", "prevtrack" to "Prev Track"
+        )
     }
 
     private fun setupDragAndDrop(view: View) {
@@ -444,7 +573,8 @@ class CustomDashboardActivity : BaseActivity() {
             onRunCommand = { path -> sendRunCommand(path) },
             onMediaCommand = { cmd -> sendMediaCommand(cmd) },
             onMinimizeCommand = ::sendMinimizeCommand,
-            onCloseCommand = ::sendCloseAppCommand
+            onCloseCommand = ::sendCloseAppCommand,
+            onKeyPressCommand = { keys -> sendKeyPressCommand(keys) }
         ) as? CardView
     }
 
@@ -452,6 +582,12 @@ class CustomDashboardActivity : BaseActivity() {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         webSocketManager?.sendCommand("run", mapOf("path" to path))
         Toast.makeText(this, if (isRussian) "Команда отправлена" else "Command sent", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun sendKeyPressCommand(keys: List<String>) {
+        val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+        webSocketManager?.sendCommand("key_press", mapOf("keys" to keys))
+        Toast.makeText(this, if (isRussian) "Нажатие отправлено" else "Keypress sent", Toast.LENGTH_SHORT).show()
     }
 
     private fun sendMinimizeCommand() {
