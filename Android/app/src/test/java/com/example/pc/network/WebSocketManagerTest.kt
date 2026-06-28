@@ -4,7 +4,6 @@ import com.google.gson.Gson
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito.*
 
 class WebSocketManagerTest {
 
@@ -28,7 +27,7 @@ class WebSocketManagerTest {
     }
 
     @Test
-    fun 	est initial state is not connected() {
+    fun `test initial state is not connected`() {
         // Just a basic test to verify structure and logic
         assertNotNull(webSocketManager)
     }

@@ -28,8 +28,12 @@
             android:exported="false" />
         <activity
             android:name=".ui.WidgetDesignerActivity"
-            android:exported="false"
-            android:label="Конструктор виджетов" />
+            android:exported="true"
+            android:label="Конструктор виджетов">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".ui.FileManagerActivity"
             android:exported="false" />

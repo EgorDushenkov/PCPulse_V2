@@ -6,6 +6,6 @@
     android:updatePeriodMillis="0"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
-    android:configure="com.example.pc.WidgetDesignerActivity"
+    android:configure="com.example.pc.ui.WidgetDesignerActivity"
     android:previewImage="@mipmap/ic_launcher">
 </appwidget-provider>
