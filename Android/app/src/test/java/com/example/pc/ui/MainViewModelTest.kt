@@ -2,7 +2,7 @@ package com.example.pc.ui
 
 import org.junit.Assert.*
 import org.junit.Test
-import com.example.pc.data.Device
+import com.example.pc.ui.Device
 
 class MainViewModelTest {
 
@@ -15,3 +15,4 @@ class MainViewModelTest {
         assertEquals(devices, viewModel.devices.value)
     }
 }
+

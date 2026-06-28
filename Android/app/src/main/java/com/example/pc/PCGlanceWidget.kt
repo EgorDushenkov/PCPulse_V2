@@ -1,6 +1,7 @@
 package com.example.pc
 
 import com.example.pc.*
+import com.example.pc.ui.widgets.*
 import com.example.pc.data.*
 import com.example.pc.network.*
 import com.example.pc.ui.*
@@ -474,3 +475,4 @@ class PCGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
         }
     }
 }
+

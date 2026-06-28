@@ -3,7 +3,7 @@ package com.example.pc.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.example.pc.data.Device
+import com.example.pc.ui.Device
 import com.example.pc.data.PCRepository
 import com.example.pc.data.PCRepositoryImpl
 
@@ -31,3 +31,4 @@ class MainViewModel : ViewModel() {
         )
     }
 }
+

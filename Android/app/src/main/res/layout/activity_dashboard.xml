@@ -60,7 +60,7 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
 
-                <com.example.pc.SpeedometerView
+                <com.example.pc.ui.SpeedometerView
                     android:id="@+id/cpuSpeedometer"
                     android:layout_width="80dp"
                     android:layout_height="80dp"
@@ -108,7 +108,7 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
 
-                <com.example.pc.SpeedometerView
+                <com.example.pc.ui.SpeedometerView
                     android:id="@+id/gpuSpeedometer"
                     android:layout_width="80dp"
                     android:layout_height="80dp"
@@ -156,7 +156,7 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
 
-                <com.example.pc.SpeedometerView
+                <com.example.pc.ui.SpeedometerView
                     android:id="@+id/ramSpeedometer"
                     android:layout_width="80dp"
                     android:layout_height="80dp"

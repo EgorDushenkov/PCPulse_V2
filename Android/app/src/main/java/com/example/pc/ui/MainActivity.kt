@@ -1,4 +1,4 @@
-package com.example.pc.ui
+п»їpackage com.example.pc.ui
 
 import com.example.pc.*
 import com.example.pc.data.*
@@ -61,7 +61,7 @@ class MainActivity : BaseActivity() {
                         runOnUiThread {
                             val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
                             val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
-                            Toast.makeText(this@MainActivity, if (isRussian) "Сервер  недоступен" else "Server  is unreachable", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MainActivity, if (isRussian) "пїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" else "Server  is unreachable", Toast.LENGTH_SHORT).show()
                         }
                     }
                     updateDeviceStatusOnly(ip, isOnline)
@@ -198,10 +198,10 @@ class MainActivity : BaseActivity() {
                     return@setPositiveButton
                 }
                 
-                val ipRegex = Regex("^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$")
+                val ipRegex = Regex("^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$")
                 if (!ipRegex.matches(ip)) {
                     Toast.makeText(this,
-                        if (isRussian) "Неверный формат IP" else "Invalid IP format",
+                        if (isRussian) "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ IP" else "Invalid IP format",
                         Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
@@ -212,13 +212,13 @@ class MainActivity : BaseActivity() {
                         runOnUiThread {
                             prefs.edit().putString("TOKEN_", token).apply()
                             
-                            val newDevice = Device(ip, pcName = if (isRussian) "Загрузка..." else "Loading...")
+                            val newDevice = Device(ip, pcName = if (isRussian) "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ..." else "Loading...")
                             devices.add(newDevice)
                             deviceAdapter.notifyItemInserted(devices.size - 1)
                             saveDevices()
                             
                             Toast.makeText(this, 
-                                if (isRussian) "Устройство подключено!" else "Device connected!", 
+                                if (isRussian) "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!" else "Device connected!", 
                                 Toast.LENGTH_SHORT).show()
                         }
                     },
@@ -305,5 +305,6 @@ class DeviceAdapter(
     }
     override fun getItemCount() = devices.size
 }
+
 
 

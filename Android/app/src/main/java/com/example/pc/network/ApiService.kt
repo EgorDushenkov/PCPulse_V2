@@ -2,12 +2,7 @@ package com.example.pc.network
 
 import com.example.pc.*
 import com.example.pc.data.*
-import com.example.pc.network.*
 import com.example.pc.ui.*
-
-import okhttp3.ResponseBody
-import com.example.pc.ui.*
-
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.GET
