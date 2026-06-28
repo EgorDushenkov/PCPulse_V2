@@ -1,4 +1,10 @@
-package com.example.pc
+package com.example.pc.ui
+
+import com.example.pc.*
+import com.example.pc.data.*
+import com.example.pc.network.*
+import com.example.pc.ui.*
+import com.example.pc.ui.widgets.*
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager

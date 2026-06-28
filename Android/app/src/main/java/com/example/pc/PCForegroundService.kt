@@ -1,5 +1,10 @@
 package com.example.pc
 
+import com.example.pc.*
+import com.example.pc.data.*
+import com.example.pc.network.*
+import com.example.pc.ui.*
+
 import android.app.*
 import android.content.Context
 import android.content.Intent
@@ -111,7 +116,7 @@ class PCForegroundService : Service() {
                         "set_mixer_volume" -> {
                             val app = intent.getStringExtra("APP_NAME")
                             val vol = intent.getStringExtra("VOLUME")?.toIntOrNull()
-                            if (ip != null && app != null && vol != null) {
+                            if (app != null && vol != null) {
                                 val key = "$ip|$app"
                                 debounceJobs[key]?.cancel()
                                 debounceJobs[key] = scope.launch {
@@ -170,6 +175,15 @@ class PCForegroundService : Service() {
                             putExtra("DEVICE_IP", ip)
                             putExtra("IS_ONLINE", false)
                             putExtra("AUTH_FAILED", true)
+                        }
+                        sendBroadcast(intent)
+                    },
+                    onServerUnreachable = {
+                        val intent = Intent(ACTION_STATS_UPDATE).apply {
+                            setPackage(packageName)
+                            putExtra("DEVICE_IP", ip)
+                            putExtra("IS_ONLINE", false)
+                            putExtra("SERVER_UNREACHABLE", true)
                         }
                         sendBroadcast(intent)
                     },
@@ -410,3 +424,5 @@ class PCForegroundService : Service() {
         super.onDestroy()
     }
 }
+
+

@@ -1,4 +1,9 @@
-package com.example.pc
+package com.example.pc.network
+
+import com.example.pc.*
+import com.example.pc.data.*
+import com.example.pc.network.*
+import com.example.pc.ui.*
 
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +17,7 @@ class WebSocketManager(
     private val token: String? = null,
     private val onStatusChanged: ((Boolean) -> Unit)? = null,
     private val onAuthFailed: (() -> Unit)? = null,
+    private val onServerUnreachable: (() -> Unit)? = null,
     private val onStatsReceived: (PCStats) -> Unit
 ) {
 
@@ -69,9 +75,15 @@ class WebSocketManager(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                val wasConnected = isConnected
                 isConnected = false
                 Log.e("WebSocket", "Failure: ${t.message}")
                 onStatusChanged?.invoke(false)
+                
+                if (!wasConnected) {
+                    handler.post { onServerUnreachable?.invoke() }
+                }
+                
                 scheduleReconnect()
             }
 
@@ -110,3 +122,4 @@ class WebSocketManager(
         isConnected = false
     }
 }
+

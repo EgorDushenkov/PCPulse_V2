@@ -1,5 +1,10 @@
 package com.example.pc
 
+import com.example.pc.*
+import com.example.pc.data.*
+import com.example.pc.network.*
+import com.example.pc.ui.*
+
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent

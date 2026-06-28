@@ -1,4 +1,9 @@
-package com.example.pc
+package com.example.pc.data
+
+import com.example.pc.*
+import com.example.pc.data.*
+import com.example.pc.network.*
+import com.example.pc.ui.*
 
 import android.content.Context
 import com.google.gson.annotations.SerializedName

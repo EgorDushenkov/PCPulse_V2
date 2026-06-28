@@ -20,24 +20,24 @@
         android:theme="@style/Theme.PC"
         android:usesCleartextTraffic="true">
         <activity
-            android:name=".ScreenshotActivity"
+            android:name=".ui.ScreenshotActivity"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
         <activity
-            android:name=".SettingsActivity"
+            android:name=".ui.SettingsActivity"
             android:exported="false" />
         <activity
-            android:name=".WidgetDesignerActivity"
+            android:name=".ui.WidgetDesignerActivity"
             android:exported="false"
             android:label="Конструктор виджетов" />
         <activity
-            android:name=".CustomDashboardActivity"
+            android:name=".ui.CustomDashboardActivity"
             android:exported="false" />
         <activity
-            android:name=".DashboardActivity"
+            android:name=".ui.DashboardActivity"
             android:exported="false" />
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

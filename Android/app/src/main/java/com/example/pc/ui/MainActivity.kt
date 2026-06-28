@@ -1,4 +1,10 @@
-package com.example.pc
+package com.example.pc.ui
+
+import com.example.pc.*
+import com.example.pc.data.*
+import com.example.pc.network.*
+import com.example.pc.ui.*
+import com.example.pc.ui.widgets.*
 
 import android.content.Context
 import android.content.Intent
@@ -50,6 +56,14 @@ class MainActivity : BaseActivity() {
                     val stats = gson.fromJson(statsJson, PCStats::class.java)
                     updateDeviceStats(ip, stats)
                 } else {
+                    val isUnreachable = intent.getBooleanExtra("SERVER_UNREACHABLE", false)
+                    if (isUnreachable) {
+                        runOnUiThread {
+                            val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+                            val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
+                            Toast.makeText(this@MainActivity, if (isRussian) "—Â‚Â  ÌÂ‰ÓÒÚÛÔÂÌ" else "Server  is unreachable", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                     updateDeviceStatusOnly(ip, isOnline)
                 }
             }
@@ -184,64 +198,38 @@ class MainActivity : BaseActivity() {
                     return@setPositiveButton
                 }
                 
-                Thread {
-                    try {
-                    val client = OkHttpClient.Builder()
-                        .connectTimeout(5, TimeUnit.SECONDS)
-                        .readTimeout(5, TimeUnit.SECONDS)
-                        .build()
-                    
-                    val jsonBody = "{\"pin\":\"$pin\"}"
-                    val body = okhttp3.RequestBody.create(
-                        okhttp3.MediaType.parse("application/json"), jsonBody
-                    )
-                    val request = Request.Builder()
-                        .url("http://$ip:5000/auth/pair")
-                        .post(body)
-                        .build()
-                    
-                    val response = client.newCall(request).execute()
-                    
-                    if (response.isSuccessful) {
-                        val responseBody = response.body()?.string() ?: ""
-                        val json = com.google.gson.JsonParser.parseString(responseBody).asJsonObject
-                        val token = json.get("token")?.asString
-                        
-                        if (token != null) {
-                            runOnUiThread {
-                                prefs.edit().putString("TOKEN_$ip", token).apply()
-                                
-                                val newDevice = Device(ip, pcName = if (isRussian) "–ó–∞–≥—Ä—É–∑–∫–∞..." else "Loading...")
-                                devices.add(newDevice)
-                                deviceAdapter.notifyItemInserted(devices.size - 1)
-                                saveDevices()
-                                
-                                Toast.makeText(this, 
-                                    if (isRussian) "–£—Å—Ç—Ä–æ–π—Å—Ç–≤–æ –ø–æ–¥–∫–ª—é—á–µ–Ω–æ!" else "Device connected!", 
-                                    Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    } else if (response.code() == 401) {
-                        runOnUiThread {
-                            Toast.makeText(this, 
-                                if (isRussian) "–ù–µ–≤–µ—Ä–Ω—ã–π PIN-–∫–æ–¥" else "Wrong PIN code", 
-                                Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        runOnUiThread {
-                            Toast.makeText(this, 
-                                if (isRussian) "–û—à–∏–±–∫–∞ —Å–µ—Ä–≤–µ—Ä–∞: ${response.code()}" else "Server error: ${response.code()}", 
-                                Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        Toast.makeText(this, 
-                            if (isRussian) "–ù–µ —É–¥–∞–ª–æ—Å—å –ø–æ–¥–∫–ª—é—á–∏—Ç—å—Å—è –∫ $ip" else "Failed to connect to $ip", 
-                            Toast.LENGTH_SHORT).show()
-                    }
+                val ipRegex = Regex("^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$")
+                if (!ipRegex.matches(ip)) {
+                    Toast.makeText(this,
+                        if (isRussian) "ÕÂ‚ÂÌ˚È ÙÓÏ‡Ú IP" else "Invalid IP format",
+                        Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
                 }
-            }.start()
+                
+                val repo = PCRepositoryImpl()
+                repo.pairDevice(ip, pin,
+                    onSuccess = { token ->
+                        runOnUiThread {
+                            prefs.edit().putString("TOKEN_", token).apply()
+                            
+                            val newDevice = Device(ip, pcName = if (isRussian) "«‡„ÛÁÍ‡..." else "Loading...")
+                            devices.add(newDevice)
+                            deviceAdapter.notifyItemInserted(devices.size - 1)
+                            saveDevices()
+                            
+                            Toast.makeText(this, 
+                                if (isRussian) "”ÒÚÓÈÒÚ‚Ó ÔÓ‰ÍÎ˛˜ÂÌÓ!" else "Device connected!", 
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onError = { errorMsg ->
+                        runOnUiThread {
+                            Toast.makeText(this, 
+                                errorMsg, 
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
         }
         .setNegativeButton(if (isRussian) "–û—Ç–º–µ–Ω–∞" else "Cancel", null)
         .show()
@@ -317,3 +305,5 @@ class DeviceAdapter(
     }
     override fun getItemCount() = devices.size
 }
+
+

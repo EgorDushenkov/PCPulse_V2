@@ -1,4 +1,10 @@
-package com.example.pc
+package com.example.pc.ui.widgets
+
+import com.example.pc.*
+import com.example.pc.data.*
+import com.example.pc.network.*
+import com.example.pc.ui.*
+import com.example.pc.ui.widgets.*
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -32,6 +38,7 @@ import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 
+
 fun Context.getThemeColor(attr: Int): Int {
     val typedValue = TypedValue()
     if (theme.resolveAttribute(attr, typedValue, true)) {
@@ -39,6 +46,7 @@ fun Context.getThemeColor(attr: Int): Int {
     }
     return Color.parseColor("#BB86FC")
 }
+
 
 fun Context.getWidgetColor(themeName: String?): Int {
     return when (themeName) {
@@ -50,6 +58,7 @@ fun Context.getWidgetColor(themeName: String?): Int {
     }
 }
 
+
 fun Context.findActivity(): Activity? {
     var context = this
     while (context is ContextWrapper) {
@@ -58,6 +67,7 @@ fun Context.findActivity(): Activity? {
     }
     return null
 }
+
 
 fun formatDeviceName(name: String): String {
     return name
@@ -87,40 +97,8 @@ abstract class BaseWidgetView @JvmOverloads constructor(
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this, context.resources.displayMetrics)
 }
 
-class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
-    private val button: Button
-    private val iconView: ImageView
-    private var config: WidgetConfig? = null
-    private var appState = 0 // 0: not running, 1: background, 2: active
-    private val borderPaint = Paint().apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 10f
-        isAntiAlias = true
-    }
-    private val rectF = RectF()
 
-    init {
-        setWillNotDraw(false)
-        
-        iconView = ImageView(context).apply {
-            layoutParams = LayoutParams(-1, -1)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            visibility = View.GONE
-        }
-        addView(iconView)
-
-        button = Button(context).apply {
-            layoutParams = LayoutParams(-1, -1)
-            background = null
-            stateListAnimator = null 
-            setTextColor(Color.WHITE)
-            textSize = 14f
-            isAllCaps = false
-        }
-        addView(button)
-    }
-
-    fun setup(
+fun setup(
         config: WidgetConfig,
         onVibrate: () -> Unit,
         onRun: (String) -> Unit,
@@ -273,26 +251,8 @@ class ActionButtonWidgetView(context: Context) : BaseWidgetView(context) {
     }
 }
 
-class ControlsWidgetView(context: Context) : BaseWidgetView(context) {
-    private val btnScreenshot: ImageButton
-    private val btnMic: ImageButton
-    private val btnSleep: ImageButton
-    private val btnShutdown: ImageButton
-    private var isMuted = false
-    
-    private var pendingMute: Boolean? = null
-    private var pendingMuteTime = 0L
-    private val PENDING_TIMEOUT = 2500L
 
-    init {
-        val v = LayoutInflater.from(context).inflate(R.layout.widget_controls, this, true)
-        btnScreenshot = v.findViewById(R.id.screenshot_button)
-        btnMic = v.findViewById(R.id.mic_button)
-        btnSleep = v.findViewById(R.id.sleep_button)
-        btnShutdown = v.findViewById(R.id.shutdown_button)
-    }
-    
-    fun setCallbacks(onVibrate: () -> Unit, onScreenshot: () -> Unit, onMicMute: (Boolean) -> Unit, onSleep: () -> Unit, onShutdown: () -> Unit) {
+fun setCallbacks(onVibrate: () -> Unit, onScreenshot: () -> Unit, onMicMute: (Boolean) -> Unit, onSleep: () -> Unit, onShutdown: () -> Unit) {
         btnScreenshot.setOnClickListener { onVibrate(); onScreenshot() }
         btnMic.setOnClickListener { 
             onVibrate()
@@ -338,107 +298,8 @@ class ControlsWidgetView(context: Context) : BaseWidgetView(context) {
     }
 }
 
-class MediaPlayerWidgetView @JvmOverloads constructor(
-    context: Context, 
-    private val isWidgetMode: Boolean = false
-) : BaseWidgetView(context) {
-    private val titleText: TextView
-    private val artistText: TextView
-    private val btnPrev: ImageButton
-    private val btnPlayPause: ImageButton
-    private val btnNext: ImageButton
-    private var onCommand: ((String) -> Unit)? = null
-    private var onVibrate: (() -> Unit)? = null
-    
-    private var currentStatus: Int = 0
-    private var pendingStatus: Int? = null
-    private var pendingStatusTime = 0L
-    private val PENDING_TIMEOUT = 2500L
-    private var currentConfig: WidgetConfig? = null
 
-    init {
-        val root = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            layoutParams = LayoutParams(-1, -1)
-        }
-
-        titleText = TextView(context).apply {
-            setTextColor(Color.WHITE)
-            textSize = 16f
-            paint.isFakeBoldText = true
-            gravity = Gravity.CENTER
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }
-        artistText = TextView(context).apply {
-            setTextColor(Color.LTGRAY)
-            textSize = 14f
-            gravity = Gravity.CENTER
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setPadding(0, 0, 0, 12f.dpToPx(context).toInt())
-        }
-
-        val controls = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-
-        val sideBtnSize = 44f.dpToPx(context).toInt()
-        val mainBtnSize = 56f.dpToPx(context).toInt()
-        val iconPadding = 12f.dpToPx(context).toInt()
-
-        btnPrev = ImageButton(context).apply {
-            layoutParams = LinearLayout.LayoutParams(sideBtnSize, sideBtnSize)
-            setImageResource(R.drawable.ic_prev)
-            background = createRoundedRipple()
-            setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }
-
-        btnPlayPause = ImageButton(context).apply {
-            layoutParams = LinearLayout.LayoutParams(mainBtnSize, mainBtnSize).apply {
-                setMargins(16f.dpToPx(context).toInt(), 0, 16f.dpToPx(context).toInt(), 0)
-            }
-            setImageResource(R.drawable.ic_pause)
-            background = createRoundedRipple()
-            setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }
-
-        btnNext = ImageButton(context).apply {
-            layoutParams = LinearLayout.LayoutParams(sideBtnSize, sideBtnSize)
-            setImageResource(R.drawable.ic_prev)
-            rotation = 180f
-            background = createRoundedRipple()
-            setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }
-
-        controls.addView(btnPrev)
-        controls.addView(btnPlayPause)
-        controls.addView(btnNext)
-
-        root.addView(titleText)
-        root.addView(artistText)
-        root.addView(controls)
-        addView(root)
-
-        btnPrev.setOnClickListener { onVibrate?.invoke(); onCommand?.invoke("prev") }
-        btnPlayPause.setOnClickListener { 
-            onVibrate?.invoke()
-            val newState = if (currentStatus == 4) 0 else 4 
-            currentStatus = newState
-            pendingStatus = newState
-            pendingStatusTime = System.currentTimeMillis()
-            updatePlayPauseIcon(newState)
-            onCommand?.invoke("play_pause") 
-        }
-        btnNext.setOnClickListener { onVibrate?.invoke(); onCommand?.invoke("next") }
-    }
-
-    private fun createRoundedRipple(): android.graphics.drawable.Drawable {
+fun createRoundedRipple(): android.graphics.drawable.Drawable {
         val r = 14f.dpToPx(context)
         val content = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -516,47 +377,8 @@ class MediaPlayerWidgetView @JvmOverloads constructor(
     }
 }
 
-class AudioMixerWidgetView @JvmOverloads constructor(
-    context: Context, 
-    private val isWidgetMode: Boolean = false
-) : BaseWidgetView(context) {
-    private val container: LinearLayout
-    private val titleText: TextView
-    private var onVolumeChange: ((String, Int) -> Unit)? = null
-    private var onVibrate: (() -> Unit)? = null
-    private val activeSliders = mutableSetOf<String>()
-    
-    private val pendingVolumes = mutableMapOf<String, Pair<Int, Long>>()
-    private val PENDING_TIMEOUT = 3000L
 
-    init {
-        val root = LinearLayout(context).apply { 
-            orientation = LinearLayout.VERTICAL 
-            layoutParams = LayoutParams(-1, -1)
-        }
-        titleText = TextView(context).apply {
-            text = Localization.get(context, "AUDIO_MIXER")
-            setTextColor(context.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
-            textSize = 10f
-            paint.isFakeBoldText = true
-            setPadding(0, 0, 0, 4f.dpToPx(context).toInt())
-        }
-        root.addView(titleText)
-        
-        val scroll = ScrollView(context).apply {
-            isVerticalScrollBarEnabled = false
-            layoutParams = LinearLayout.LayoutParams(-1, -1)
-        }
-        container = LinearLayout(context).apply { 
-            orientation = LinearLayout.VERTICAL 
-            layoutParams = LayoutParams(-1, -2)
-        }
-        scroll.addView(container)
-        root.addView(scroll)
-        addView(root)
-    }
-
-    fun setCallbacks(onVibrate: () -> Unit, onVolumeChange: (String, Int) -> Unit) { 
+fun setCallbacks(onVibrate: () -> Unit, onVolumeChange: (String, Int) -> Unit) { 
         this.onVibrate = onVibrate
         this.onVolumeChange = onVolumeChange 
     }
@@ -701,31 +523,8 @@ class AudioMixerWidgetView @JvmOverloads constructor(
     }
 }
 
-class StorageWidgetView(context: Context) : BaseWidgetView(context) {
-    private val container: LinearLayout
-    private val titleText: TextView
-    init {
-        val root = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        titleText = TextView(context).apply {
-            text = Localization.get(context, "STORAGE")
-            setTextColor(context.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
-            textSize = 12f
-            paint.isFakeBoldText = true
-            setPadding(0, 0, 0, 4f.dpToPx(context).toInt())
-        }
-        root.addView(titleText)
-        val scroll = ScrollView(context).apply {
-            layoutParams = LayoutParams(-1, -1)
-            isVerticalScrollBarEnabled = false
-        }
-        container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        scroll.addView(container)
-        root.addView(scroll)
-        addView(root)
-    }
 
-    private var currentConfig: WidgetConfig? = null
-    override fun updateConfig(config: WidgetConfig) {
+fun updateConfig(config: WidgetConfig) {
         this.currentConfig = config
         val color = context.getWidgetColor(config.theme)
         titleText.setTextColor(color)
@@ -761,24 +560,8 @@ class StorageWidgetView(context: Context) : BaseWidgetView(context) {
     }
 }
 
-class CoolingWidgetView(context: Context) : BaseWidgetView(context) {
-    private val fansText: TextView
-    private val titleText: TextView
-    init {
-        val c = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        titleText = TextView(context).apply {
-            text = Localization.get(context, "COOLING")
-            setTextColor(context.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
-            textSize = 12f; paint.isFakeBoldText = true
-        }
-        c.addView(titleText)
-        fansText = TextView(context).apply { setTextColor(Color.WHITE); textSize = 14f }
-        c.addView(fansText)
-        addView(c)
-    }
 
-    private var currentConfig: WidgetConfig? = null
-    override fun updateConfig(config: WidgetConfig) {
+fun updateConfig(config: WidgetConfig) {
         this.currentConfig = config
         val color = context.getWidgetColor(config.theme)
         titleText.setTextColor(color)
@@ -797,25 +580,8 @@ class CoolingWidgetView(context: Context) : BaseWidgetView(context) {
     }
 }
 
-class TopProcessesWidgetView(context: Context) : BaseWidgetView(context) {
-    private val container: LinearLayout
-    private val titleText: TextView
-    private var onKill: ((Int) -> Unit)? = null
-    private var onVibrate: (() -> Unit)? = null
-    init {
-        val c = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        titleText = TextView(context).apply {
-            text = Localization.get(context, "PROCESSES")
-            setTextColor(context.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
-            textSize = 12f; paint.isFakeBoldText = true
-        }
-        c.addView(titleText)
-        container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        c.addView(container); addView(c)
-    }
 
-    private var currentConfig: WidgetConfig? = null
-    override fun updateConfig(config: WidgetConfig) {
+fun updateConfig(config: WidgetConfig) {
         this.currentConfig = config
         val color = context.getWidgetColor(config.theme)
         titleText.setTextColor(color)
@@ -955,8 +721,8 @@ abstract class SpeedometerWidgetView(context: Context) : BaseWidgetView(context)
     }
 }
 
-class CpuWidgetView(context: Context) : SpeedometerWidgetView(context) {
-    override fun updateData(stats: PCStats) {
+
+fun updateData(stats: PCStats) {
         val prefs = context.getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         val showNames = prefs.getBoolean("SHOW_DEVICE_NAMES", false)
         labelText.text = if (showNames) formatDeviceName(stats.cpu.name) else Localization.get(context, "CPU")
@@ -970,8 +736,8 @@ class CpuWidgetView(context: Context) : SpeedometerWidgetView(context) {
     }
 }
 
-class RamWidgetView(context: Context) : SpeedometerWidgetView(context) {
-    override fun updateData(stats: PCStats) {
+
+fun updateData(stats: PCStats) {
         labelText.text = Localization.get(context, "RAM")
         speedometer.setValue(stats.ram.usage.toFloat())
         detailText.text = "${stats.ram.used} / ${stats.ram.total} GB"
@@ -983,8 +749,8 @@ class RamWidgetView(context: Context) : SpeedometerWidgetView(context) {
     }
 }
 
-class GpuWidgetView(context: Context) : SpeedometerWidgetView(context) {
-    override fun updateData(stats: PCStats) {
+
+fun updateData(stats: PCStats) {
         val prefs = context.getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         val showNames = prefs.getBoolean("SHOW_DEVICE_NAMES", false)
         stats.gpu.getOrNull(0)?.let { g ->
@@ -997,101 +763,5 @@ class GpuWidgetView(context: Context) : SpeedometerWidgetView(context) {
     override fun setOffline() {
         speedometer.setValue(0f)
         detailText.text = "--°C | VRAM: --%"
-    }
-}
-
-class NetworkWidgetView(context: Context) : BaseWidgetView(context) {
-    private val downText: TextView
-    private val upText: TextView
-    private val titleText: TextView
-    private var currentConfig: WidgetConfig? = null
-
-    init {
-        val l = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
-        titleText = TextView(context).apply {
-            text = Localization.get(context, "NETWORK")
-            setTextColor(context.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
-            textSize = 12f; paint.isFakeBoldText = true
-        }
-        l.addView(titleText)
-        downText = TextView(context).apply { setTextColor(Color.WHITE); textSize = 16f; paint.isFakeBoldText = true }
-        upText = TextView(context).apply { setTextColor(Color.LTGRAY); textSize = 12f }
-        l.addView(downText); l.addView(upText); addView(l)
-    }
-
-    override fun updateConfig(config: WidgetConfig) {
-        this.currentConfig = config
-        val color = context.getWidgetColor(config.theme)
-        titleText.setTextColor(color)
-    }
-
-    @SuppressLint("SetTextI18n")
-    override fun updateData(stats: PCStats) {
-        titleText.text = Localization.get(context, "NETWORK")
-        val color = context.getWidgetColor(currentConfig?.theme)
-        titleText.setTextColor(color)
-        downText.text = "↓ ${stats.network.down_kbps.toInt()} KB/s"
-        upText.text = "↑ ${stats.network.up_kbps.toInt()} KB/s"
-    }
-
-    override fun setOffline() {
-        downText.text = "↓ 0 KB/s"
-        upText.text = "↑ 0 KB/s"
-    }
-}
-
-object WidgetFactory {
-    fun create(
-        config: WidgetConfig,
-        context: Context,
-        isWidget: Boolean = false,
-        onVibrate: () -> Unit = {},
-        onScreenshot: (() -> Unit)? = null,
-        onMicMute: ((Boolean) -> Unit)? = null,
-        onSleep: (() -> Unit)? = null,
-        onShutdown: (() -> Unit)? = null,
-        onVolumeChange: ((String, Int) -> Unit)? = null,
-        onKill: ((Int) -> Unit)? = null,
-        onRunCommand: ((String) -> Unit)? = null,
-        onMediaCommand: ((String) -> Unit)? = null,
-        onMinimizeCommand: (() -> Unit)? = null,
-        onCloseCommand: ((String) -> Unit)? = null,
-        onKeyPressCommand: ((List<String>) -> Unit)? = null
-    ): View {
-        return when (config.type) {
-            WidgetType.COOLING -> CoolingWidgetView(context).apply { updateConfig(config) }
-            WidgetType.TOP_PROCESSES -> TopProcessesWidgetView(context).apply {
-                setCallbacks(onVibrate, onKill ?: {})
-                updateConfig(config)
-            }
-            WidgetType.CPU -> CpuWidgetView(context).apply { updateConfig(config) }
-            WidgetType.RAM -> RamWidgetView(context).apply { updateConfig(config) }
-            WidgetType.GPU -> GpuWidgetView(context).apply { updateConfig(config) }
-            WidgetType.NETWORK -> NetworkWidgetView(context).apply { updateConfig(config) }
-            WidgetType.ACTION_BUTTON -> ActionButtonWidgetView(context).apply {
-                setup(config, onVibrate, onRunCommand ?: {}, onMinimizeCommand ?: {}, onCloseCommand ?: {}, onKeyPressCommand)
-                updateConfig(config)
-            }
-            WidgetType.MEDIA_PLAYER -> MediaPlayerWidgetView(context, isWidget).apply {
-                setCallbacks(onVibrate, onMediaCommand ?: {})
-                updateConfig(config)
-            }
-            WidgetType.AUDIO_MIXER -> AudioMixerWidgetView(context, isWidget).apply {
-                setCallbacks(onVibrate, onVolumeChange ?: { _, _ -> })
-                updateConfig(config)
-            }
-            WidgetType.CONTROLS -> ControlsWidgetView(context).apply {
-                setCallbacks(
-                    onVibrate = onVibrate,
-                    onScreenshot = onScreenshot ?: {},
-                    onMicMute = onMicMute ?: {},
-                    onSleep = onSleep ?: {},
-                    onShutdown = onShutdown ?: {}
-                )
-                updateConfig(config)
-            }
-            WidgetType.STORAGE -> StorageWidgetView(context).apply { updateConfig(config) }
-            null -> View(context)
-        }
     }
 }
