@@ -10,9 +10,17 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class WebServer {
     private final WorkerManager worker;
@@ -132,6 +140,105 @@ public class WebServer {
                 ctx.status(504).result("Worker не ответил за 5 сек");
             } catch (Exception e) {
                 ctx.status(500).result("Icon extraction failed");
+            }
+        });
+
+        app.get("/fs/list", ctx -> {
+            if (!requireAuth(ctx)) return;
+            String path = ctx.queryParam("path");
+            List<Map<String, Object>> result = new ArrayList<>();
+            try {
+                if (path == null || path.trim().isEmpty()) {
+                    File[] roots = File.listRoots();
+                    if (roots != null) {
+                        for (File f : roots) {
+                            Map<String, Object> item = new HashMap<>();
+                            item.put("name", f.getAbsolutePath());
+                            item.put("path", f.getAbsolutePath());
+                            item.put("isDir", true);
+                            item.put("size", f.getTotalSpace());
+                            item.put("date", f.lastModified());
+                            result.add(item);
+                        }
+                    }
+                } else {
+                    File dir = new File(path);
+                    if (dir.exists() && dir.isDirectory()) {
+                        File[] files = dir.listFiles();
+                        if (files != null) {
+                            for (File f : files) {
+                                Map<String, Object> item = new HashMap<>();
+                                item.put("name", f.getName());
+                                item.put("path", f.getAbsolutePath());
+                                item.put("isDir", f.isDirectory());
+                                item.put("size", f.length());
+                                item.put("date", f.lastModified());
+                                result.add(item);
+                            }
+                            result.sort((a, b) -> {
+                                boolean dirA = (Boolean) a.get("isDir");
+                                boolean dirB = (Boolean) b.get("isDir");
+                                if (dirA && !dirB) return -1;
+                                if (!dirA && dirB) return 1;
+                                return ((String) a.get("name")).compareToIgnoreCase((String) b.get("name"));
+                            });
+                        }
+                    } else {
+                        ctx.status(404).result("Directory not found");
+                        return;
+                    }
+                }
+                ctx.json(result);
+            } catch (Exception e) {
+                ctx.status(500).result(e.getMessage());
+            }
+        });
+
+        app.post("/fs/copy", ctx -> {
+            if (!requireAuth(ctx)) return;
+            try {
+                var node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(ctx.body());
+                String dest = node.has("destination") ? node.get("destination").asText() : "";
+                List<String> sources = new ArrayList<>();
+                if (node.has("sources")) {
+                    node.get("sources").forEach(s -> sources.add(s.asText()));
+                }
+                
+                if (dest.isEmpty() || sources.isEmpty()) {
+                    ctx.status(400).result("Bad Request");
+                    return;
+                }
+
+                new Thread(() -> {
+                    for (String srcStr : sources) {
+                        try {
+                            Path srcPath = Paths.get(srcStr);
+                            Path destPath = Paths.get(dest, srcPath.getFileName().toString());
+                            if (Files.isDirectory(srcPath)) {
+                                Files.walkFileTree(srcPath, new SimpleFileVisitor<Path>() {
+                                    @Override
+                                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws java.io.IOException {
+                                        Path targetDir = destPath.resolve(srcPath.relativize(dir));
+                                        if (!Files.exists(targetDir)) Files.createDirectory(targetDir);
+                                        return FileVisitResult.CONTINUE;
+                                    }
+                                    @Override
+                                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws java.io.IOException {
+                                        Files.copy(file, destPath.resolve(srcPath.relativize(file)), StandardCopyOption.REPLACE_EXISTING);
+                                        return FileVisitResult.CONTINUE;
+                                    }
+                                });
+                            } else {
+                                Files.copy(srcPath, destPath, StandardCopyOption.REPLACE_EXISTING);
+                            }
+                        } catch (Exception e) {
+                        }
+                    }
+                }).start();
+                
+                ctx.json(Collections.singletonMap("status", "started"));
+            } catch (Exception e) {
+                ctx.status(500).result(e.getMessage());
             }
         });
 

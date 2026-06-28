@@ -31,6 +31,9 @@
             android:exported="false"
             android:label="Конструктор виджетов" />
         <activity
+            android:name=".ui.FileManagerActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.CustomDashboardActivity"
             android:exported="false" />
         <activity

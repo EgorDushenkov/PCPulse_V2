@@ -15,7 +15,30 @@ interface ApiService {
     
     @POST("/auth/pair")
     fun pair(@retrofit2.http.Body request: PairRequest): Call<PairResponse>
+
+    @GET("/fs/list")
+    fun listFs(@Query("path") path: String?): Call<List<FsItem>>
+
+    @POST("/fs/copy")
+    fun copyFs(@retrofit2.http.Body request: FsCopyRequest): Call<FsCopyResponse>
 }
+
+data class FsItem(
+    val name: String,
+    val path: String,
+    val isDir: Boolean,
+    val size: Long,
+    val date: Long
+)
+
+data class FsCopyRequest(
+    val sources: List<String>,
+    val destination: String
+)
+
+data class FsCopyResponse(
+    val status: String
+)
 
 data class PairRequest(val pin: String)
 data class PairResponse(val token: String)

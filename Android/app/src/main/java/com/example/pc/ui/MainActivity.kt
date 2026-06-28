@@ -1,4 +1,4 @@
-﻿package com.example.pc.ui
+package com.example.pc.ui
 
 import com.example.pc.*
 import com.example.pc.data.*
@@ -157,6 +157,17 @@ class MainActivity : BaseActivity() {
             onItemLongClick = { device ->
                 vibrate(20)
                 showDeleteDeviceDialog(device)
+            },
+            onFilesClick = { device ->
+                vibrate()
+                if (device.isOnline) {
+                    val intent = Intent(this, FileManagerActivity::class.java)
+                    intent.putExtra("DEVICE_IP", device.ipAddress)
+                    startActivity(intent)
+                } else {
+                    val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
+                    Toast.makeText(this, if (isRussian) "Устройство не в сети" else "Device offline", Toast.LENGTH_SHORT).show()
+                }
             }
         )
         devicesRecyclerView.adapter = deviceAdapter
@@ -285,12 +296,14 @@ class MainActivity : BaseActivity() {
 class DeviceAdapter(
     private val devices: List<Device>,
     private val onItemClick: (Device) -> Unit,
-    private val onItemLongClick: (Device) -> Unit
+    private val onItemLongClick: (Device) -> Unit,
+    private val onFilesClick: (Device) -> Unit
 ) : RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder>() {
     class DeviceViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val deviceName: TextView = view.findViewById(R.id.deviceName)
         val deviceStatus: TextView = view.findViewById(R.id.deviceStatus)
         val quickStats: TextView = view.findViewById(R.id.quickStats)
+        val btnFiles: View = view.findViewById(R.id.btnFiles)
     }
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
         return DeviceViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.item_device, parent, false))
@@ -302,6 +315,7 @@ class DeviceAdapter(
         holder.quickStats.text = device.quickStats
         holder.itemView.setOnClickListener { onItemClick(device) }
         holder.itemView.setOnLongClickListener { onItemLongClick(device); true }
+        holder.btnFiles.setOnClickListener { onFilesClick(device) }
     }
     override fun getItemCount() = devices.size
 }
