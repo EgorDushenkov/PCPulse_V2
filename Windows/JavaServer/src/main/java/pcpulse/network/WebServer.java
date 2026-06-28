@@ -242,6 +242,50 @@ public class WebServer {
             }
         });
 
+        app.get("/fs/download", ctx -> {
+            if (!requireAuth(ctx)) return;
+            String path = ctx.queryParam("path");
+            try {
+                if (path == null || path.trim().isEmpty()) {
+                    ctx.status(400).result("Bad Request");
+                    return;
+                }
+                File f = new File(path);
+                if (f.exists() && !f.isDirectory()) {
+                    ctx.header("Content-Disposition", "attachment; filename=\"" + f.getName() + "\"");
+                    ctx.result(Files.newInputStream(f.toPath()));
+                } else {
+                    ctx.status(404).result("File not found");
+                }
+            } catch (Exception e) {
+                ctx.status(500).result(e.getMessage());
+            }
+        });
+
+        app.post("/fs/upload", ctx -> {
+            if (!requireAuth(ctx)) return;
+            String targetPath = ctx.queryParam("path");
+            try {
+                if (targetPath == null || targetPath.trim().isEmpty()) {
+                    ctx.status(400).result("Bad Request");
+                    return;
+                }
+                File targetDir = new File(targetPath);
+                if (!targetDir.exists() || !targetDir.isDirectory()) {
+                    ctx.status(400).result("Target path is not a directory");
+                    return;
+                }
+                ctx.uploadedFiles("file").forEach(file -> {
+                    try {
+                        Files.copy(file.content(), new File(targetDir, file.filename()).toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    } catch (Exception e) {}
+                });
+                ctx.json(Collections.singletonMap("status", "ok"));
+            } catch (Exception e) {
+                ctx.status(500).result(e.getMessage());
+            }
+        });
+
         // ws авторизация через query-параметр, потому что браузерный WS API не даёт ставить заголовки
 
         app.ws("/ws", ws -> {

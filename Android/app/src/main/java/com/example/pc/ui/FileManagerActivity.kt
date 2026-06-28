@@ -6,11 +6,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.pc.R
@@ -21,9 +23,15 @@ import com.example.pc.network.FsItem
 import com.example.pc.network.RetrofitClient
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import okhttp3.MediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.File
+import java.io.FileOutputStream
 
 class FileManagerActivity : BaseActivity() {
 
@@ -32,6 +40,8 @@ class FileManagerActivity : BaseActivity() {
     private lateinit var tvCurrentPath: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var fabAction: ExtendedFloatingActionButton
+    private lateinit var fabDownload: ExtendedFloatingActionButton
+    private lateinit var btnUpload: ImageButton
     
     private lateinit var api: ApiService
     private var currentPath: String = ""
@@ -59,9 +69,25 @@ class FileManagerActivity : BaseActivity() {
         tvCurrentPath = findViewById(R.id.tvCurrentPath)
         progressBar = findViewById(R.id.progressBar)
         fabAction = findViewById(R.id.fabAction)
+        fabDownload = findViewById(R.id.fabDownload)
+        btnUpload = findViewById(R.id.btnUpload)
 
         rvFiles.layoutManager = LinearLayoutManager(this)
         rvFiles.adapter = FileAdapter()
+
+        val uploadLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                doUpload(uri)
+            }
+        }
+
+        btnUpload.setOnClickListener {
+            uploadLauncher.launch("*/*")
+        }
+
+        fabDownload.setOnClickListener {
+            doDownload()
+        }
 
         toolbar.setNavigationOnClickListener {
             onBackPressedDispatcher.onBackPressed()
@@ -136,6 +162,9 @@ class FileManagerActivity : BaseActivity() {
     }
 
     private fun updateFab() {
+        btnUpload.visibility = if (currentPath.isNotEmpty()) View.VISIBLE else View.GONE
+        fabDownload.visibility = View.GONE
+        
         if (isCopyMode) {
             fabAction.visibility = View.VISIBLE
             fabAction.text = "Paste here"
@@ -144,6 +173,14 @@ class FileManagerActivity : BaseActivity() {
             fabAction.visibility = View.VISIBLE
             fabAction.text = "Copy (${selectedPaths.size})"
             fabAction.setIconResource(android.R.drawable.ic_menu_agenda)
+            
+            if (selectedPaths.size == 1) {
+                val p = selectedPaths.first()
+                val itm = items.find { it.path == p }
+                if (itm != null && !itm.isDir) {
+                    fabDownload.visibility = View.VISIBLE
+                }
+            }
         } else {
             fabAction.visibility = View.GONE
         }
@@ -183,6 +220,98 @@ class FileManagerActivity : BaseActivity() {
                 Toast.makeText(this@FileManagerActivity, "Fail: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    private fun doDownload() {
+        val p = selectedPaths.firstOrNull() ?: return
+        val itm = items.find { it.path == p } ?: return
+        progressBar.visibility = View.VISIBLE
+        api.downloadFs(p).enqueue(object : Callback<ResponseBody> {
+            override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                progressBar.visibility = View.GONE
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        try {
+                            val downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                            val f = File(downloads, itm.name)
+                            var i = 1
+                            var dest = f
+                            while (dest.exists()) {
+                                val nameWithoutExt = itm.name.substringBeforeLast(".")
+                                val ext = if (itm.name.contains(".")) "." + itm.name.substringAfterLast(".") else ""
+                                dest = File(downloads, "$nameWithoutExt ($i)$ext")
+                                i++
+                            }
+                            val out = FileOutputStream(dest)
+                            out.write(body.bytes())
+                            out.close()
+                            Toast.makeText(this@FileManagerActivity, "Saved to Downloads", Toast.LENGTH_SHORT).show()
+                            selectedPaths.clear()
+                            updateFab()
+                            rvFiles.adapter?.notifyDataSetChanged()
+                        } catch (e: Exception) {
+                            Toast.makeText(this@FileManagerActivity, "Error saving: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                    Toast.makeText(this@FileManagerActivity, "Error ${response.code()}", Toast.LENGTH_SHORT).show()
+                }
+            }
+            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                progressBar.visibility = View.GONE
+                Toast.makeText(this@FileManagerActivity, "Fail: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun doUpload(uri: android.net.Uri) {
+        if (currentPath.isEmpty()) return
+        progressBar.visibility = View.VISIBLE
+        try {
+            val ins = contentResolver.openInputStream(uri)
+            if (ins != null) {
+                val tempFile = File.createTempFile("upload", ".tmp", cacheDir)
+                val os = FileOutputStream(tempFile)
+                ins.copyTo(os)
+                os.close()
+                ins.close()
+                
+                var filename = "uploaded_file"
+                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex != -1) {
+                            filename = cursor.getString(nameIndex)
+                        }
+                    }
+                }
+                
+                val reqFile = RequestBody.create(MediaType.parse("*/*"), tempFile)
+                val part = MultipartBody.Part.createFormData("file", filename, reqFile)
+                
+                api.uploadFs(currentPath, part).enqueue(object : Callback<ResponseBody> {
+                    override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                        progressBar.visibility = View.GONE
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@FileManagerActivity, "Uploaded successfully", Toast.LENGTH_SHORT).show()
+                            loadPath(currentPath)
+                        } else {
+                            Toast.makeText(this@FileManagerActivity, "Error ${response.code()}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this@FileManagerActivity, "Upload fail: ${t.message}", Toast.LENGTH_SHORT).show()
+                    }
+                })
+            } else {
+                progressBar.visibility = View.GONE
+            }
+        } catch (e: Exception) {
+            progressBar.visibility = View.GONE
+            Toast.makeText(this, "Upload error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     inner class FileAdapter : RecyclerView.Adapter<FileAdapter.VH>() {
