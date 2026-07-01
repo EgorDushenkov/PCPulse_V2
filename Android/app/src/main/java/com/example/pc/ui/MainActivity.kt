@@ -221,7 +221,7 @@ class MainActivity : BaseActivity() {
                 repo.pairDevice(ip, pin,
                     onSuccess = { token ->
                         runOnUiThread {
-                            prefs.edit().putString("TOKEN_", token).apply()
+                            prefs.edit().putString("TOKEN_$ip", token).apply()
                             
                             val newDevice = Device(ip, pcName = if (isRussian) "��������..." else "Loading...")
                             devices.add(newDevice)
