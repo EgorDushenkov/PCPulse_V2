@@ -33,19 +33,29 @@ public class WebServer {
         this.auth = auth;
     }
 
-    public void start(int port) {
+    public int start(int port) {
         app = Javalin.create(cfg -> {
             cfg.bundledPlugins.enableCors(cors -> cors.addRule(it -> it.anyHost()));
         });
 
-        try {
-            app.start("0.0.0.0", port);
-        } catch (Exception e) {
-            //если порт занят — надо бы сказать пользователю, а не молча сдохнуть
-            System.err.println("[Server] Не удалось стартовать на порту " + port + ": " + e.getMessage());
+        int actualPort = port;
+        boolean started = false;
+        for (int i = 0; i < 10; i++) {
+            try {
+                app.start("0.0.0.0", actualPort);
+                started = true;
+                break;
+            } catch (Exception e) {
+                System.err.println("[Server] Не удалось стартовать на порту " + actualPort + ": " + e.getMessage());
+                actualPort++;
+            }
+        }
+        if (!started) {
+            System.err.println("[Server] Не удалось запустить сервер ни на одном порту от " + port + " до " + (port + 9));
         }
 
         setupRoutes();
+        return actualPort;
     }
 
     private String extractToken(Context ctx) {
@@ -288,30 +298,64 @@ public class WebServer {
 
         // ws авторизация через query-параметр, потому что браузерный WS API не даёт ставить заголовки
 
+        app.get("/show_ui", ctx -> {
+            try (java.net.Socket s = new java.net.Socket("127.0.0.1", 49991);
+                 java.io.OutputStream os = s.getOutputStream()) {
+                os.write("SHOW_UI\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                os.flush();
+            } catch (Exception ignored) {}
+            ctx.result("OK");
+        });
+
         app.ws("/ws", ws -> {
             ws.onConnect(ctx -> {
                 if (!auth.isAuthorized(ctx.queryParam("token"))) {
                     ctx.session.close(4001, "Unauthorized");
                     return;
                 }
+                try {
+                    ctx.session.setIdleTimeout(java.time.Duration.ofSeconds(60));
+                } catch (Exception ignored) {}
                 clients.add(ctx);
             });
             ws.onClose(ctx -> clients.remove(ctx));
+            ws.onError(ctx -> clients.remove(ctx));
             ws.onMessage(ctx -> worker.sendCommand(ctx.message()));
         });
     }
 
     public void broadcast(String json) {
+        List<WsContext> dead = new ArrayList<>();
         for (WsContext ctx : clients) {
-            if (ctx.session.isOpen()) ctx.send(json);
+            try {
+                if (ctx.session.isOpen()) {
+                    ctx.send(json);
+                } else {
+                    dead.add(ctx);
+                }
+            } catch (Exception e) {
+                dead.add(ctx);
+            }
+        }
+        if (!dead.isEmpty()) {
+            clients.removeAll(dead);
         }
     }
 
     public void disconnectUnauthorized() {
+        List<WsContext> dead = new ArrayList<>();
         for (WsContext ctx : clients) {
-            if (!auth.isAuthorized(ctx.queryParam("token"))) {
-                ctx.session.close(4001, "Unauthorized");
+            try {
+                if (!auth.isAuthorized(ctx.queryParam("token"))) {
+                    ctx.session.close(4001, "Unauthorized");
+                    dead.add(ctx);
+                }
+            } catch (Exception e) {
+                dead.add(ctx);
             }
+        }
+        if (!dead.isEmpty()) {
+            clients.removeAll(dead);
         }
     }
 }

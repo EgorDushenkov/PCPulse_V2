@@ -8,10 +8,11 @@ import java.awt.*;
 public class TrayAndGUI {
     private JFrame frame;
     private final Runnable onExit;
-    private final String localIp;
+    private volatile String localIp;
     private final AuthManager auth;
     private final Runnable onRevoke;
     private JLabel pinLabel;
+    private JLabel ipVal;
 
     private static final Color BG = new Color(28, 30, 34);
 
@@ -25,6 +26,28 @@ public class TrayAndGUI {
     public void init() {
         setupTray();
         setupWindow();
+    }
+
+    public void showWindow() {
+        SwingUtilities.invokeLater(() -> {
+            if (frame != null) {
+                frame.setVisible(true);
+                frame.setExtendedState(JFrame.NORMAL);
+                frame.setAlwaysOnTop(true);
+                frame.toFront();
+                frame.requestFocus();
+                frame.setAlwaysOnTop(false);
+            }
+        });
+    }
+
+    public void updateIp(String newIp) {
+        if (newIp != null && !newIp.equals(this.localIp)) {
+            this.localIp = newIp;
+            SwingUtilities.invokeLater(() -> {
+                if (ipVal != null) ipVal.setText(newIp);
+            });
+        }
     }
 
     private void setupTray() {
@@ -41,12 +64,7 @@ public class TrayAndGUI {
 
             TrayIcon icon = new TrayIcon(img, "PC Pulse Server");
             icon.setImageAutoSize(true);
-            icon.addActionListener(e -> {
-                if (frame != null) {
-                    frame.setVisible(true);
-                    frame.setExtendedState(JFrame.NORMAL);
-                }
-            });
+            icon.addActionListener(e -> showWindow());
 
             PopupMenu popup = new PopupMenu();
             MenuItem exit = new MenuItem("Exit");
@@ -83,7 +101,7 @@ public class TrayAndGUI {
 
         JLabel title = styledLabel("PC Pulse Активен", new Color(240, 240, 240), new Font("Segoe UI", Font.BOLD, 22));
         JLabel ipHint = styledLabel("IP-АДРЕС ДЛЯ ПОДКЛЮЧЕНИЯ", new Color(130, 135, 140), new Font("Segoe UI", Font.BOLD, 11));
-        JLabel ipVal = styledLabel(localIp, new Color(88, 166, 255), new Font("Segoe UI", Font.BOLD, 18));
+        ipVal = styledLabel(localIp, new Color(88, 166, 255), new Font("Segoe UI", Font.BOLD, 18));
         JLabel pinHint = styledLabel("РАЗОВЫЙ PIN-КОД", new Color(130, 135, 140), new Font("Segoe UI", Font.BOLD, 11));
 
         pinLabel = styledLabel(auth.getPin(), new Color(80, 200, 120), new Font("Consolas", Font.BOLD, 46));

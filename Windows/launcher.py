@@ -17,6 +17,14 @@ def main():
         messagebox.showerror("Error", "JRE not found in embedded package.")
         return
 
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", 49991), timeout=0.5) as s:
+            s.sendall(b"SHOW_UI\n")
+        return
+    except (ConnectionRefusedError, OSError, socket.timeout):
+        pass
+
     subprocess.run([jre_path, "-jar", jar_path], cwd=base_dir, creationflags=0x08000000)
 
 if __name__ == "__main__":

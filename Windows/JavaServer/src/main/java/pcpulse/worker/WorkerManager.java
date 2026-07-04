@@ -16,69 +16,101 @@ import java.util.UUID;
 public class WorkerManager {
     private static final ObjectMapper mapper = new ObjectMapper();
     private ObjectNode lastState = mapper.createObjectNode();
-    private Process proc;
-    private BufferedWriter writer;
+    private volatile Process proc;
+    private volatile BufferedWriter writer;
     private final ConcurrentHashMap<String, CompletableFuture<byte[]>> iconReqs = new ConcurrentHashMap<>();
+    private volatile boolean running = false;
+    private Thread supervisorThread;
 
-    public void start() {
-        try {
-            proc = new ProcessBuilder("worker.exe").start();
-            writer = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream(), StandardCharsets.UTF_8));
+    public synchronized void start() {
+        if (running) return;
+        running = true;
+        supervisorThread = new Thread(() -> {
+            int restartCount = 0;
+            while (running) {
+                try {
+                    System.out.println("[WorkerManager] Запуск worker.exe (попытка " + (restartCount + 1) + ")...");
+                    ProcessBuilder pb = new ProcessBuilder("worker.exe");
+                    proc = pb.start();
+                    writer = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream(), StandardCharsets.UTF_8));
 
-            Thread reader = new Thread(() -> {
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        try {
-                            JsonNode node = mapper.readTree(line);
-                            if (!node.isObject()) continue;
-
-                            if (node.has("type") && "icon_response".equals(node.get("type").asText())) {
-                                String reqId = node.get("req_id").asText();
-                                String data = node.get("data").asText();
-                                CompletableFuture<byte[]> future = iconReqs.remove(reqId);
-                                if (future != null) {
-                                    future.complete(data.isEmpty() ? null : java.util.Base64.getDecoder().decode(data));
-                                }
-                            } else {
-                                synchronized (lastState) {
-                                    lastState = (ObjectNode) node;
-                                }
-                            }
+                    Process currentProc = proc;
+                    Thread errDrain = new Thread(() -> {
+                        try (BufferedReader br = new BufferedReader(new InputStreamReader(currentProc.getErrorStream(), StandardCharsets.UTF_8))) {
+                            while (br.readLine() != null) { /* /dev/null */ }
                         } catch (Exception ignored) {}
+                    });
+                    errDrain.setDaemon(true);
+                    errDrain.start();
+
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(currentProc.getInputStream(), StandardCharsets.UTF_8))) {
+                        String line;
+                        while (running && (line = br.readLine()) != null) {
+                            restartCount = 0; // сбрасываем счётчик при успешном чтении
+                            try {
+                                JsonNode node = mapper.readTree(line);
+                                if (!node.isObject()) continue;
+
+                                if (node.has("type") && "icon_response".equals(node.get("type").asText())) {
+                                    String reqId = node.get("req_id").asText();
+                                    String data = node.get("data").asText();
+                                    CompletableFuture<byte[]> future = iconReqs.remove(reqId);
+                                    if (future != null) {
+                                        future.complete(data.isEmpty() ? null : java.util.Base64.getDecoder().decode(data));
+                                    }
+                                } else {
+                                    synchronized (lastState) {
+                                        lastState = (ObjectNode) node;
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                    if (running) {
+                        try { currentProc.waitFor(); } catch (InterruptedException ignored) {}
+                        System.err.println("[WorkerManager] worker.exe завершил работу. Планируется перезапуск.");
                     }
                 } catch (Exception e) {
-                    System.err.println("[Worker] stdout reader упал: " + e.getMessage());
+                    if (running) {
+                        System.err.println("[WorkerManager] Ошибка запуска/чтения worker.exe: " + e.getMessage());
+                    }
                 }
-            });
-            reader.setDaemon(true);
-            reader.start();
 
-            // stderr надо дренить, иначе буфер забьётся и worker зависнет
-            Thread errDrain = new Thread(() -> {
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(proc.getErrorStream(), StandardCharsets.UTF_8))) {
-                    while (br.readLine() != null) { /* /dev/null */ }
-                } catch (Exception ignored) {}
-            });
-            errDrain.setDaemon(true);
-            errDrain.start();
-        } catch (Exception e) {
-            //нормально обработать — сейчас если worker.exe нет, просто молча ляжем
-            e.printStackTrace();
-        }
+                writer = null;
+                if (proc != null) {
+                    proc.destroyForcibly();
+                    proc = null;
+                }
+
+                if (running) {
+                    restartCount++;
+                    long sleepMs = Math.min(10000L, 1000L * (1L << Math.min(restartCount, 3))); // 2s, 4s, 8s max
+                    System.err.println("[WorkerManager] Перезапуск через " + (sleepMs / 1000) + " сек...");
+                    try { Thread.sleep(sleepMs); } catch (InterruptedException ignored) {}
+                }
+            }
+        }, "WorkerSupervisor");
+        supervisorThread.setDaemon(true);
+        supervisorThread.start();
     }
 
-    public void stop() {
+    public synchronized void stop() {
+        running = false;
+        if (supervisorThread != null) supervisorThread.interrupt();
         if (proc != null) proc.destroyForcibly();
+        writer = null;
     }
 
     public void sendCommand(String json) {
-        if (writer == null) return;
+        BufferedWriter w = this.writer;
+        Process p = this.proc;
+        if (w == null || p == null || !p.isAlive()) return;
         try {
-            writer.write(json + "\n");
-            writer.flush();
+            w.write(json + "\n");
+            w.flush();
         } catch (Exception e) {
             System.err.println("[Worker] Не смог отправить команду: " + e.getMessage());
+            if (p != null) p.destroyForcibly(); // форсируем перезапуск воркера при сбое канала
         }
     }
 

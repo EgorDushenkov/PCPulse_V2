@@ -103,52 +103,61 @@ cmd_queue = queue.Queue()
 def hw_loop():
     pythoncom.CoInitialize()
     computer = None
-    if ohm_ok:
-        try:
-            computer = Computer()
-            computer.CPUEnabled = True
-            computer.MainboardEnabled = True
-            computer.GPUEnabled = True
-            computer.FanControllerEnabled = True
-            computer.Open()
-        except:
-            computer = None
-
     while True:
         try:
+            if ohm_ok and computer is None:
+                try:
+                    computer = Computer()
+                    computer.CPUEnabled = True
+                    computer.MainboardEnabled = True
+                    computer.GPUEnabled = True
+                    computer.FanControllerEnabled = True
+                    computer.Open()
+                except Exception as e:
+                    computer = None
+
             gpus = []
-            for g in GPUtil.getGPUs():
-                gpus.append({
-                    "name": g.name,
-                    "load": round(g.load * 100),
-                    "temp": g.temperature,
-                    "mem_p": round(g.memoryUtil * 100)
-                })
-            state["gpu"] = gpus
+            try:
+                for g in GPUtil.getGPUs():
+                    gpus.append({
+                        "name": g.name,
+                        "load": round(g.load * 100),
+                        "temp": g.temperature,
+                        "mem_p": round(g.memoryUtil * 100)
+                    })
+                state["gpu"] = gpus
+            except Exception as e:
+                pass
 
             if computer:
-                fans = []
-                clocks = []
-                for hw in computer.Hardware:
-                    hw.Update()
-                    for item in [hw] + list(hw.SubHardware):
-                        item.Update()
-                        for s in item.Sensors:
-                            name = str(s.Name)
-                            val = s.Value
-                            if val is None: continue
-                            stype = str(s.SensorType)
-                            if stype == 'Clock' and 'CPU Core #' in name:
-                                clocks.append(val)
-                            if stype == 'Temperature' and 'CPU Package' in name:
-                                state["cpu_temp"] = round(val, 1)
-                            if stype == 'Fan':
-                                fans.append({"name": f"{hw.Name} {name}", "rpm": int(val)})
-                if clocks:
-                    state["cpu_freq"] = round(sum(clocks) / len(clocks))
-                state["fans"] = fans
-        except:
-            pass
+                try:
+                    fans = []
+                    clocks = []
+                    for hw in computer.Hardware:
+                        hw.Update()
+                        for item in [hw] + list(hw.SubHardware):
+                            item.Update()
+                            for s in item.Sensors:
+                                name = str(s.Name)
+                                val = s.Value
+                                if val is None: continue
+                                stype = str(s.SensorType)
+                                if stype == 'Clock' and 'CPU Core #' in name:
+                                    clocks.append(val)
+                                if stype == 'Temperature' and 'CPU Package' in name:
+                                    state["cpu_temp"] = round(val, 1)
+                                if stype == 'Fan':
+                                    fans.append({"name": f"{hw.Name} {name}", "rpm": int(val)})
+                    if clocks:
+                        state["cpu_freq"] = round(sum(clocks) / len(clocks))
+                    state["fans"] = fans
+                except Exception as e:
+                    _log(f"[hw_loop] OHM update error: {e}")
+                    try: computer.Close()
+                    except: pass
+                    computer = None
+        except Exception as e:
+            _log(f"[hw_loop] general error: {e}")
         time.sleep(2.0)
 
 def _get_speaker_vol():
@@ -360,20 +369,47 @@ def emit_state():
             _log(f"[emit] stdout error: {e}")
         time.sleep(1.0)
 
+def supervise_thread(name, target_func):
+    while True:
+        try:
+            _log(f"[supervisor] Starting loop: {name}")
+            target_func()
+        except Exception as e:
+            _log(f"[supervisor] Loop {name} crashed with error: {e}. Restarting in 2 seconds...")
+            time.sleep(2.0)
+
+def parent_watchdog():
+    ppid = os.getppid()
+    _log(f"[watchdog] Parent PID: {ppid}")
+    while True:
+        time.sleep(3.0)
+        try:
+            if not psutil.pid_exists(ppid):
+                _log("[watchdog] Parent process died. Exiting worker...")
+                os._exit(0)
+        except Exception as e:
+            pass
+
 if __name__ == "__main__":
     with open(LOG, "w") as f: f.write("Worker started\n")
 
-    for target in (hw_loop, audio_loop, run_async_loop, emit_state):
-        threading.Thread(target=target, daemon=True).start()
+    for name, target in [("hw_loop", hw_loop), ("audio_loop", audio_loop), ("async_loop", run_async_loop), ("emit_state", emit_state), ("watchdog", parent_watchdog)]:
+        threading.Thread(target=supervise_thread, args=(name, target), daemon=True).start()
 
+    eof_count = 0
     while True:
         try:
             if sys.stdin is None:
                 sys.stdin = io.TextIOWrapper(os.fdopen(0, 'rb'), encoding='utf-8', errors='replace')
             line = sys.stdin.readline()
             if not line:
+                eof_count += 1
+                if eof_count >= 10:
+                    _log("[stdin] Stdin pipe closed (EOF). Exiting worker...")
+                    os._exit(0)
                 time.sleep(1)
                 continue
+            eof_count = 0
             _log(f"[stdin] {line.strip()}")
             cmd_queue.put(json.loads(line))
         except Exception as e:

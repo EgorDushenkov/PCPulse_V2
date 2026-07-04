@@ -91,75 +91,91 @@ public class SystemMonitor {
 
         CentralProcessor cpu = hal.getProcessor();
         ObjectNode cpuNode = state.putObject("cpu");
-        cpuNode.put("name", cpu.getProcessorIdentifier().getName());
-        cpuNode.put("usage", Math.round(cpu.getSystemCpuLoadBetweenTicks(prevTicks) * 100.0));
-        prevTicks = cpu.getSystemCpuLoadTicks();
-        cpuNode.put("cores", cpu.getPhysicalProcessorCount());
-
-        GlobalMemory mem = hal.getMemory();
-        long totalRam = mem.getTotal();
-        long freeRam = mem.getAvailable();
-        long usedRam = totalRam - freeRam;
-        ObjectNode ramNode = state.putObject("ram");
-        ramNode.put("usage", Math.round(((double) usedRam / totalRam) * 100));
-        ramNode.put("total", roundGb(totalRam));
-        ramNode.put("used", roundGb(usedRam));
-        ramNode.put("free", roundGb(freeRam));
-
-        long now = System.currentTimeMillis();
-        long dt = now - prevTime;
-        long totRx = 0, totTx = 0;
-        for (NetworkIF net : hal.getNetworkIFs()) {
-            net.updateAttributes();
-            long rx = net.getBytesRecv();
-            long tx = net.getBytesSent();
-            totRx += rx - prevRx.getOrDefault(net.getName(), rx);
-            totTx += tx - prevTx.getOrDefault(net.getName(), tx);
-            prevRx.put(net.getName(), rx);
-            prevTx.put(net.getName(), tx);
+        try {
+            cpuNode.put("name", cpu.getProcessorIdentifier().getName());
+            cpuNode.put("usage", Math.round(cpu.getSystemCpuLoadBetweenTicks(prevTicks) * 100.0));
+            prevTicks = cpu.getSystemCpuLoadTicks();
+            cpuNode.put("cores", cpu.getPhysicalProcessorCount());
+        } catch (Throwable t) {
+            cpuNode.put("usage", 0);
         }
-        prevTime = now;
+
+        ObjectNode ramNode = state.putObject("ram");
+        try {
+            GlobalMemory mem = hal.getMemory();
+            long totalRam = mem.getTotal();
+            long freeRam = mem.getAvailable();
+            long usedRam = totalRam - freeRam;
+            ramNode.put("usage", Math.round(((double) usedRam / totalRam) * 100));
+            ramNode.put("total", roundGb(totalRam));
+            ramNode.put("used", roundGb(usedRam));
+            ramNode.put("free", roundGb(freeRam));
+        } catch (Throwable t) {
+            ramNode.put("usage", 0);
+        }
 
         ObjectNode netNode = state.putObject("network");
-        if (dt > 0) {
-            netNode.put("down_kbps", Math.round((totRx * 8.0 / 1024.0) / (dt / 1000.0) * 10.0) / 10.0);
-            netNode.put("up_kbps", Math.round((totTx * 8.0 / 1024.0) / (dt / 1000.0) * 10.0) / 10.0);
-        } else {
+        try {
+            long now = System.currentTimeMillis();
+            long dt = now - prevTime;
+            long totRx = 0, totTx = 0;
+            for (NetworkIF net : hal.getNetworkIFs()) {
+                net.updateAttributes();
+                long rx = net.getBytesRecv();
+                long tx = net.getBytesSent();
+                totRx += rx - prevRx.getOrDefault(net.getName(), rx);
+                totTx += tx - prevTx.getOrDefault(net.getName(), tx);
+                prevRx.put(net.getName(), rx);
+                prevTx.put(net.getName(), tx);
+            }
+            prevTime = now;
+
+            if (dt > 0) {
+                netNode.put("down_kbps", Math.round((totRx * 8.0 / 1024.0) / (dt / 1000.0) * 10.0) / 10.0);
+                netNode.put("up_kbps", Math.round((totTx * 8.0 / 1024.0) / (dt / 1000.0) * 10.0) / 10.0);
+            } else {
+                netNode.put("down_kbps", 0);
+                netNode.put("up_kbps", 0);
+            }
+        } catch (Throwable t) {
             netNode.put("down_kbps", 0);
             netNode.put("up_kbps", 0);
         }
 
         ArrayNode procs = state.putArray("procs");
-        List<OSProcess> pList = os.getProcesses(null, OperatingSystem.ProcessSorting.CPU_DESC, 20);
-        int count = 0;
-        int logicalCores = cpu.getLogicalProcessorCount();
-        for (OSProcess p : pList) {
-            String pName = p.getName().toLowerCase();
-            if (p.getProcessID() == 0 || pName.contains("idle") || pName.contains("бездействие")) continue;
-            // не показываем самих себя в списке процессов
-            if (pName.contains("pcpulseserver") || pName.contains("worker.exe")
-                || pName.contains("javaw.exe") || pName.contains("java.exe")) continue;
+        try {
+            List<OSProcess> pList = os.getProcesses(null, OperatingSystem.ProcessSorting.CPU_DESC, 20);
+            int count = 0;
+            int logicalCores = cpu.getLogicalProcessorCount();
+            for (OSProcess p : pList) {
+                String pName = p.getName().toLowerCase();
+                if (p.getProcessID() == 0 || pName.contains("idle") || pName.contains("бездействие")) continue;
+                if (pName.contains("pcpulseserver") || pName.contains("worker.exe")
+                    || pName.contains("javaw.exe") || pName.contains("java.exe")) continue;
 
-            ObjectNode pNode = mapper.createObjectNode();
-            pNode.put("pid", p.getProcessID());
-            pNode.put("name", p.getName());
-            long cpuVal = Math.round(100d * (p.getKernelTime() + p.getUserTime()) / Math.max(1, p.getUpTime()) / logicalCores);
-            pNode.put("cpu", Math.min(100, Math.max(0, cpuVal)));
-            procs.add(pNode);
-            if (++count >= 5) break;
-        }
+                ObjectNode pNode = mapper.createObjectNode();
+                pNode.put("pid", p.getProcessID());
+                pNode.put("name", p.getName());
+                long cpuVal = Math.round(100d * (p.getKernelTime() + p.getUserTime()) / Math.max(1, p.getUpTime()) / logicalCores);
+                pNode.put("cpu", Math.min(100, Math.max(0, cpuVal)));
+                procs.add(pNode);
+                if (++count >= 5) break;
+            }
+        } catch (Throwable t) {}
 
         ArrayNode disks = state.putArray("disks");
-        for (OSFileStore fs : os.getFileSystem().getFileStores()) {
-            long total = fs.getTotalSpace();
-            if (total <= 0 || fs.getMount().isEmpty()) continue;
-            long used = total - fs.getUsableSpace();
-            ObjectNode disk = mapper.createObjectNode();
-            disk.put("dev", fs.getMount());
-            disk.put("total", roundGb(total));
-            disk.put("percent", Math.round((double) used / total * 1000.0) / 10.0);
-            disks.add(disk);
-        }
+        try {
+            for (OSFileStore fs : os.getFileSystem().getFileStores()) {
+                long total = fs.getTotalSpace();
+                if (total <= 0 || fs.getMount().isEmpty()) continue;
+                long used = total - fs.getUsableSpace();
+                ObjectNode disk = mapper.createObjectNode();
+                disk.put("dev", fs.getMount());
+                disk.put("total", roundGb(total));
+                disk.put("percent", Math.round((double) used / total * 1000.0) / 10.0);
+                disks.add(disk);
+            }
+        } catch (Throwable t) {}
 
         if (workerState != null) {
             // мерджим то, что пришло от python worker'а
