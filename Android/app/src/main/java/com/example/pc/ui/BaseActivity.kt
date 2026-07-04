@@ -28,8 +28,10 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.OutputStream
 import android.content.res.Configuration
+import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -46,7 +48,14 @@ abstract class BaseActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         applyAppTheme()
         if (this !is CustomDashboardActivity) {
-            enableEdgeToEdge()
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+                navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isNavigationBarContrastEnforced = false
+                window.isStatusBarContrastEnforced = false
+            }
         }
         super.onCreate(savedInstanceState)
         

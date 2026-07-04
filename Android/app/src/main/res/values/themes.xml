@@ -2,6 +2,10 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.PC" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/dark_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>
+        <item name="android:enforceStatusBarContrast" tools:targetApi="29">false</item>
         <item name="colorPrimary">@color/purple</item>
         <item name="colorAccent">@color/purple</item>
         <item name="mainAccentColor">@color/purple</item>
