@@ -27,6 +27,12 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.OutputStream
+import android.content.res.Configuration
+import android.view.View
+import android.view.ViewGroup
+import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 abstract class BaseActivity : AppCompatActivity() {
 
@@ -39,6 +45,9 @@ abstract class BaseActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyAppTheme()
+        if (this !is CustomDashboardActivity) {
+            enableEdgeToEdge()
+        }
         super.onCreate(savedInstanceState)
         
         intent.getStringExtra("DEVICE_IP")?.let { ip ->
@@ -206,5 +215,37 @@ abstract class BaseActivity : AppCompatActivity() {
             .setPositiveButton(if (isRussian) "Да" else "Yes") { _, _ -> onConfirm() }
             .setNegativeButton(if (isRussian) "Нет" else "No", null)
             .show()
+    }
+
+    override fun setContentView(layoutResID: Int) {
+        super.setContentView(layoutResID)
+        setupWindowInsets()
+    }
+
+    override fun setContentView(view: View?) {
+        super.setContentView(view)
+        setupWindowInsets()
+    }
+
+    override fun setContentView(view: View?, params: ViewGroup.LayoutParams?) {
+        super.setContentView(view, params)
+        setupWindowInsets()
+    }
+
+    protected fun setupWindowInsets() {
+        if (this is CustomDashboardActivity) return
+        val contentView = findViewById<View>(android.R.id.content) ?: return
+        ViewCompat.setOnApplyWindowInsetsListener(contentView) { view, insets ->
+            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                val bars = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+                )
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            } else {
+                view.setPadding(0, 0, 0, 0)
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(contentView)
     }
 }
