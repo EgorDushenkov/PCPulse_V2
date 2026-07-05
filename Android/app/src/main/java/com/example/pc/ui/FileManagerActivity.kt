@@ -6,9 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
-import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -21,7 +19,6 @@ import com.example.pc.network.FsCopyRequest
 import com.example.pc.network.FsCopyResponse
 import com.example.pc.network.FsItem
 import com.example.pc.network.RetrofitClient
-import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import okhttp3.MediaType
 import okhttp3.MultipartBody
@@ -36,17 +33,20 @@ import java.io.FileOutputStream
 class FileManagerActivity : BaseActivity() {
 
     private lateinit var rvFiles: RecyclerView
-    private lateinit var toolbar: MaterialToolbar
+    private lateinit var btnBack: View
+    private lateinit var tvHeaderTitle: TextView
     private lateinit var tvCurrentPath: TextView
-    private lateinit var progressBar: ProgressBar
+    private lateinit var progressBar: View
+    private lateinit var tvLoadingText: TextView
     private lateinit var fabAction: ExtendedFloatingActionButton
     private lateinit var fabDownload: ExtendedFloatingActionButton
-    private lateinit var btnUpload: ImageButton
+    private lateinit var btnUpload: View
     
     private lateinit var api: ApiService
     private var currentPath: String = ""
     private var deviceIp: String = ""
     private var token: String = ""
+    private var isRussian: Boolean = true
     
     private val items = mutableListOf<FsItem>()
     private val selectedPaths = mutableSetOf<String>()
@@ -61,16 +61,22 @@ class FileManagerActivity : BaseActivity() {
         deviceIp = intent.getStringExtra("DEVICE_IP") ?: return finish()
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         token = prefs.getString("TOKEN_$deviceIp", "") ?: ""
+        isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
 
         api = RetrofitClient.getClient(deviceIp, token)
 
         rvFiles = findViewById(R.id.rvFiles)
-        toolbar = findViewById(R.id.toolbar)
+        btnBack = findViewById(R.id.btn_back)
+        tvHeaderTitle = findViewById(R.id.tvHeaderTitle)
         tvCurrentPath = findViewById(R.id.tvCurrentPath)
         progressBar = findViewById(R.id.progressBar)
+        tvLoadingText = findViewById(R.id.tvLoadingText)
         fabAction = findViewById(R.id.fabAction)
         fabDownload = findViewById(R.id.fabDownload)
         btnUpload = findViewById(R.id.btnUpload)
+
+        tvHeaderTitle.text = if (isRussian) "Файловый менеджер" else "File Manager"
+        tvLoadingText.text = if (isRussian) "Загрузка..." else "Loading..."
 
         rvFiles.layoutManager = LinearLayoutManager(this)
         rvFiles.adapter = FileAdapter()
@@ -82,14 +88,17 @@ class FileManagerActivity : BaseActivity() {
         }
 
         btnUpload.setOnClickListener {
+            vibrate()
             uploadLauncher.launch("*/*")
         }
 
         fabDownload.setOnClickListener {
+            vibrate()
             doDownload()
         }
 
-        toolbar.setNavigationOnClickListener {
+        btnBack.setOnClickListener {
+            vibrate()
             onBackPressedDispatcher.onBackPressed()
         }
 
@@ -117,6 +126,7 @@ class FileManagerActivity : BaseActivity() {
         })
 
         fabAction.setOnClickListener {
+            vibrate()
             if (isCopyMode) {
                 doCopy()
             } else {
@@ -134,7 +144,7 @@ class FileManagerActivity : BaseActivity() {
                 progressBar.visibility = View.GONE
                 if (response.isSuccessful) {
                     currentPath = path
-                    tvCurrentPath.text = if (path.isEmpty()) "ROOT" else path
+                    tvCurrentPath.text = if (path.isEmpty()) (if (isRussian) "КОРНЕВАЯ ПАПКА (ROOT)" else "ROOT") else path
                     items.clear()
                     response.body()?.let { items.addAll(it) }
                     selectedPaths.clear()
@@ -167,18 +177,19 @@ class FileManagerActivity : BaseActivity() {
         
         if (isCopyMode) {
             fabAction.visibility = View.VISIBLE
-            fabAction.text = "Paste here"
-            fabAction.setIconResource(android.R.drawable.ic_menu_save)
+            fabAction.text = if (isRussian) "Вставить сюда" else "Paste here"
+            fabAction.setIconResource(R.drawable.ic_paste)
         } else if (selectedPaths.isNotEmpty()) {
             fabAction.visibility = View.VISIBLE
-            fabAction.text = "Copy (${selectedPaths.size})"
-            fabAction.setIconResource(android.R.drawable.ic_menu_agenda)
+            fabAction.text = if (isRussian) "Копировать (${selectedPaths.size})" else "Copy (${selectedPaths.size})"
+            fabAction.setIconResource(R.drawable.ic_copy)
             
             if (selectedPaths.size == 1) {
                 val p = selectedPaths.first()
                 val itm = items.find { it.path == p }
                 if (itm != null && !itm.isDir) {
                     fabDownload.visibility = View.VISIBLE
+                    fabDownload.text = if (isRussian) "Скачать" else "Download"
                 }
             }
         } else {
@@ -197,7 +208,7 @@ class FileManagerActivity : BaseActivity() {
 
     private fun doCopy() {
         if (currentPath.isEmpty()) {
-            Toast.makeText(this, "Cannot paste in ROOT", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (isRussian) "Нельзя вставить в корневую папку" else "Cannot paste in ROOT", Toast.LENGTH_SHORT).show()
             return
         }
         val req = FsCopyRequest(pathsToCopy.toList(), currentPath)
@@ -206,7 +217,7 @@ class FileManagerActivity : BaseActivity() {
             override fun onResponse(call: Call<FsCopyResponse>, response: Response<FsCopyResponse>) {
                 progressBar.visibility = View.GONE
                 if (response.isSuccessful) {
-                    Toast.makeText(this@FileManagerActivity, "Copy started in background", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FileManagerActivity, if (isRussian) "Копирование запущено в фоне" else "Copy started in background", Toast.LENGTH_SHORT).show()
                     isCopyMode = false
                     pathsToCopy.clear()
                     updateFab()
@@ -246,12 +257,12 @@ class FileManagerActivity : BaseActivity() {
                             val out = FileOutputStream(dest)
                             out.write(body.bytes())
                             out.close()
-                            Toast.makeText(this@FileManagerActivity, "Saved to Downloads", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@FileManagerActivity, if (isRussian) "Сохранено в загрузки (Downloads)" else "Saved to Downloads", Toast.LENGTH_SHORT).show()
                             selectedPaths.clear()
                             updateFab()
                             rvFiles.adapter?.notifyDataSetChanged()
                         } catch (e: Exception) {
-                            Toast.makeText(this@FileManagerActivity, "Error saving: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@FileManagerActivity, if (isRussian) "Ошибка сохранения: ${e.message}" else "Error saving: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 } else {
@@ -294,7 +305,7 @@ class FileManagerActivity : BaseActivity() {
                     override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                         progressBar.visibility = View.GONE
                         if (response.isSuccessful) {
-                            Toast.makeText(this@FileManagerActivity, "Uploaded successfully", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@FileManagerActivity, if (isRussian) "Файл успешно загружен" else "Uploaded successfully", Toast.LENGTH_SHORT).show()
                             loadPath(currentPath)
                         } else {
                             Toast.makeText(this@FileManagerActivity, "Error ${response.code()}", Toast.LENGTH_SHORT).show()
@@ -302,7 +313,7 @@ class FileManagerActivity : BaseActivity() {
                     }
                     override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                         progressBar.visibility = View.GONE
-                        Toast.makeText(this@FileManagerActivity, "Upload fail: ${t.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@FileManagerActivity, if (isRussian) "Ошибка загрузки: ${t.message}" else "Upload fail: ${t.message}", Toast.LENGTH_SHORT).show()
                     }
                 })
             } else {
@@ -310,7 +321,7 @@ class FileManagerActivity : BaseActivity() {
             }
         } catch (e: Exception) {
             progressBar.visibility = View.GONE
-            Toast.makeText(this, "Upload error: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (isRussian) "Ошибка загрузки: ${e.message}" else "Upload error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -339,18 +350,18 @@ class FileManagerActivity : BaseActivity() {
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = getItem(position)
             if (item == null) {
-                holder.tvName.text = ".."
-                holder.ivIcon.setImageResource(android.R.drawable.ic_menu_revert)
-                holder.tvDetails.text = "Вверх"
+                holder.tvName.text = if (isRussian) "Назад / Родительская папка" else "Parent Folder (..)"
+                holder.ivIcon.setImageResource(R.drawable.ic_folder_up)
+                holder.tvDetails.text = if (isRussian) "Вернуться на уровень вверх" else "Go up one level"
                 holder.cbSelect.visibility = View.GONE
-                holder.itemView.setOnClickListener { goUp() }
+                holder.itemView.setOnClickListener { vibrate(); goUp() }
                 holder.itemView.setOnLongClickListener { true }
                 return
             }
 
             holder.tvName.text = item.name
-            holder.ivIcon.setImageResource(if (item.isDir) android.R.drawable.ic_menu_add else android.R.drawable.ic_menu_info_details)
-            holder.tvDetails.text = if (item.isDir) "Folder" else "${item.size / 1024} KB"
+            holder.ivIcon.setImageResource(if (item.isDir) R.drawable.ic_folder else R.drawable.ic_file)
+            holder.tvDetails.text = if (item.isDir) (if (isRussian) "Папка" else "Folder") else "${item.size / 1024} KB"
             
             holder.cbSelect.visibility = if (selectedPaths.isNotEmpty() && !isCopyMode) View.VISIBLE else View.GONE
             holder.cbSelect.isChecked = selectedPaths.contains(item.path)
@@ -360,12 +371,14 @@ class FileManagerActivity : BaseActivity() {
                     toggleSelect(item.path)
                 } else {
                     if (item.isDir) {
+                        vibrate()
                         loadPath(item.path)
                     }
                 }
             }
             
             holder.itemView.setOnLongClickListener {
+                vibrate()
                 if (!isCopyMode) {
                     toggleSelect(item.path)
                 }

@@ -13,6 +13,26 @@
         <item name="colorSecondaryVariant">@color/purple</item>
         <item name="colorControlActivated">@color/purple</item>
         <item name="android:colorControlActivated">@color/purple</item>
+
+        <!-- Eliminate Material 3 violet/purple tint on surfaces, cards, and dialogs -->
+        <item name="colorSurface">@color/card_bg</item>
+        <item name="colorSurfaceVariant">@color/card_bg</item>
+        <item name="colorSurfaceContainer">@color/card_bg</item>
+        <item name="colorSurfaceContainerLow">@color/card_bg</item>
+        <item name="colorSurfaceContainerHigh">@color/card_bg</item>
+        <item name="colorSurfaceContainerHighest">@color/card_bg</item>
+        <item name="colorSurfaceContainerLowest">@color/dark_bg</item>
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="colorSecondaryContainer">#282828</item>
+        <item name="colorOnSecondaryContainer">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#282828</item>
+        <item name="colorOnPrimaryContainer">#FFFFFF</item>
+        <item name="colorOutline">#40FFFFFF</item>
+        <item name="colorOutlineVariant">#1AFFFFFF</item>
+        <item name="android:colorBackground">@color/dark_bg</item>
+        <item name="android:colorBackgroundFloating">@color/card_bg</item>
+        <item name="materialAlertDialogTheme">@style/CustomAlertDialogTheme</item>
+        <item name="alertDialogTheme">@style/CustomAlertDialogTheme</item>
     </style>
 
     <style name="Theme.PC" parent="Base.Theme.PC" />
@@ -26,6 +46,7 @@
         <item name="colorSecondaryVariant">@color/purple</item>
         <item name="colorControlActivated">@color/purple</item>
         <item name="android:colorControlActivated">@color/purple</item>
+        <item name="elevationOverlayEnabled">false</item>
     </style>
 
     <!-- Бирюзовая тема -->
@@ -37,6 +58,7 @@
         <item name="colorSecondaryVariant">@color/turquoise</item>
         <item name="colorControlActivated">@color/turquoise</item>
         <item name="android:colorControlActivated">@color/turquoise</item>
+        <item name="elevationOverlayEnabled">false</item>
     </style>
 
     <!-- Оранжевая тема -->
@@ -48,6 +70,7 @@
         <item name="colorSecondaryVariant">@color/neon_orange</item>
         <item name="colorControlActivated">@color/neon_orange</item>
         <item name="android:colorControlActivated">@color/neon_orange</item>
+        <item name="elevationOverlayEnabled">false</item>
     </style>
 
     <!-- Зеленая тема -->
@@ -59,5 +82,25 @@
         <item name="colorSecondaryVariant">@color/matrix_green</item>
         <item name="colorControlActivated">@color/matrix_green</item>
         <item name="android:colorControlActivated">@color/matrix_green</item>
+        <item name="elevationOverlayEnabled">false</item>
+    </style>
+
+    <!-- Custom Dialog Theme -->
+    <style name="CustomAlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/card_bg</item>
+        <item name="colorSurfaceVariant">@color/card_bg</item>
+        <item name="colorSurfaceContainer">@color/card_bg</item>
+        <item name="colorSurfaceContainerLow">@color/card_bg</item>
+        <item name="colorSurfaceContainerHigh">@color/card_bg</item>
+        <item name="colorSurfaceContainerHighest">@color/card_bg</item>
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="android:backgroundTint">@color/card_bg</item>
+        <item name="android:colorBackgroundFloating">@color/card_bg</item>
+        <item name="shapeAppearanceCornerLarge">@style/DialogCornerRadius</item>
+        <item name="android:textColorPrimary">@color/text_white</item>
+    </style>
+
+    <style name="DialogCornerRadius" parent="ShapeAppearance.Material3.LargeComponent">
+        <item name="cornerSize">20dp</item>
     </style>
 </resources>
