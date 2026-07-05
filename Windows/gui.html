@@ -159,7 +159,7 @@
             align-items: center;
             position: relative;
             z-index: 2;
-            padding-bottom: 6px;
+            padding-bottom: 4px;
         }
 
         .title-wrapper {
@@ -178,7 +178,6 @@
         }
 
         @keyframes pulseDot {
-
             0%,
             100% {
                 transform: scale(1);
@@ -231,7 +230,7 @@
         .main-content {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             margin: auto 0;
         }
 
@@ -251,7 +250,7 @@
             font-weight: 700;
             color: var(--accent-cyan);
             text-align: center;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             text-shadow: 0 0 15px rgba(0, 240, 255, 0.45);
             position: relative;
             z-index: 2;
@@ -264,8 +263,8 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border: 1px solid rgba(0, 240, 255, 0.3);
-            border-radius: 24px;
-            padding: 18px;
+            border-radius: 22px;
+            padding: 14px;
             text-align: center;
             position: relative;
             z-index: 2;
@@ -300,7 +299,7 @@
 
         .pin-value {
             font-family: 'Consolas', monospace;
-            font-size: 42px;
+            font-size: 38px;
             font-weight: 800;
             color: var(--accent-cyan);
             letter-spacing: 7px;
@@ -311,8 +310,8 @@
         .btn-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            margin-top: 8px;
+            gap: 12px;
+            margin-top: 4px;
             position: relative;
             z-index: 2;
         }
@@ -322,8 +321,8 @@
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: 20px;
-            padding: 14px;
+            border-radius: 18px;
+            padding: 12px;
             font-size: 12px;
             font-weight: 700;
             color: #fff;
@@ -378,12 +377,13 @@
             box-shadow: 0 10px 25px rgba(255, 85, 85, 0.45);
         }
 
-        /* Shimmering Liquid Gold Calligraphy - Clean! No filter box artifact! */
+        /* Shimmering Liquid Gold Calligraphy - Wild Glow on Hover & Fireworks on Click! */
         .gold-calligraphy {
             font-family: 'Segoe Script', 'Monotype Corsiva', 'Gabriola', 'Brush Script MT', cursive;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             text-align: center;
+            white-space: nowrap;
             background: linear-gradient(120deg, #ffd700 0%, #fff8e1 25%, #ffa000 50%, #ffd700 75%, #fff8e1 100%);
             background-size: 300% auto;
             color: transparent;
@@ -391,8 +391,8 @@
             background-clip: text;
             animation: liquidGold 4s linear infinite;
             display: inline-block;
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            cursor: default;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
             border: none;
             outline: none;
             box-shadow: none;
@@ -408,11 +408,13 @@
             }
         }
 
+        /* WILD GOLDEN GLOW on Hover! */
         .gold-calligraphy:hover {
-            transform: scale(1.05);
+            transform: scale(1.08);
+            text-shadow: 0 0 12px rgba(255, 215, 0, 0.9), 0 0 28px rgba(255, 180, 0, 0.8), 0 0 50px rgba(255, 140, 0, 0.7), 0 0 80px rgba(255, 255, 255, 0.9);
         }
 
-        /* Main Screen Banner - Clean bottom banner */
+        /* Main Screen Banner */
         #main-banner {
             max-height: 0;
             opacity: 0;
@@ -422,9 +424,10 @@
         }
 
         #main-banner.show {
-            max-height: 50px;
+            max-height: 60px;
             opacity: 1;
             padding-top: 6px;
+            overflow: visible;
         }
 
         /* Special View - Full window seamless VIP Easter Egg */
@@ -453,8 +456,8 @@
         }
 
         .special-title {
-            font-size: 23px;
-            margin-bottom: 4px;
+            font-size: 21px;
+            margin-bottom: 2px;
             z-index: 2;
             position: relative;
         }
@@ -464,7 +467,7 @@
             color: #d4af37;
             text-align: center;
             font-style: italic;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             z-index: 2;
             position: relative;
             opacity: 0.9;
@@ -492,16 +495,25 @@
             align-items: center;
             justify-content: space-between;
             background: rgba(255, 255, 255, 0.05);
-            padding: 12px 16px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            margin-top: 14px;
+            padding: 10px 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            margin-top: 8px;
             z-index: 2;
             position: relative;
             transition: border-color 0.3s ease;
         }
 
+        .toggle-wrapper.gold-border {
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
         .toggle-wrapper:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.18);
+        }
+
+        .toggle-wrapper.gold-border:hover {
             border-color: var(--gold-primary);
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
         }
@@ -509,14 +521,14 @@
         .toggle-label {
             font-size: 12px;
             font-weight: 700;
-            color: #fff8e1;
+            color: #fff;
         }
 
         .switch {
             position: relative;
             display: inline-block;
-            width: 46px;
-            height: 24px;
+            width: 44px;
+            height: 22px;
         }
 
         .switch input {
@@ -543,8 +555,8 @@
             content: "";
             height: 16px;
             width: 16px;
-            left: 3px;
-            bottom: 3px;
+            left: 2px;
+            bottom: 2px;
             background-color: white;
             transition: .4s cubic-bezier(0.34, 1.56, 0.64, 1);
             border-radius: 50%;
@@ -552,19 +564,120 @@
         }
 
         input:checked+.slider {
+            background: linear-gradient(90deg, #00f0ff, #20e2d7);
+            border-color: #00f0ff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+        }
+
+        input:checked+.slider.gold-slider {
             background: linear-gradient(90deg, #ffd700, #ffa000);
             border-color: #ffd700;
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
         }
 
         input:checked+.slider:before {
-            transform: translateX(22px);
+            transform: translateX(20px);
+        }
+
+        /* Custom Confirm Modal for Revoke ("Сбросить связи") */
+        .confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 7, 12, 0.82);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 500;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+
+        .confirm-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .confirm-card {
+            width: 88%;
+            max-width: 360px;
+            background: rgba(18, 20, 30, 0.95);
+            border: 1px solid rgba(255, 85, 85, 0.5);
+            border-radius: 28px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(255, 85, 85, 0.25);
+            transform: scale(0.85);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .confirm-overlay.active .confirm-card {
+            transform: scale(1);
+        }
+
+        .confirm-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ff5555;
+            margin-bottom: 8px;
+        }
+
+        .confirm-text {
+            font-size: 13px;
+            color: #d0d5dd;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .confirm-btns {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 10px;
+        }
+
+        .btn-cancel {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 10px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-confirm-delete {
+            background: linear-gradient(90deg, #ff5555, #cc0000);
+            border: none;
+            border-radius: 16px;
+            padding: 10px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(255, 85, 85, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn-confirm-delete:hover {
+            transform: scale(1.03);
+            box-shadow: 0 10px 25px rgba(255, 85, 85, 0.6);
         }
 
         /* Toast notification */
         #toast {
             position: fixed;
-            top: 20px;
+            top: 18px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
             background: rgba(16, 18, 28, 0.94);
@@ -578,6 +691,7 @@
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.3);
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 1000;
+            white-space: nowrap;
         }
 
         #toast.show {
@@ -608,7 +722,7 @@
             <div class="section-label">IP-адрес для подключения</div>
             <div class="ip-value" id="ip-val">Загрузка...</div>
 
-            <div class="section-label" style="margin-top: 8px;">Разовый PIN-код</div>
+            <div class="section-label" style="margin-top: 6px;">Разовый PIN-код</div>
             <div class="pin-box">
                 <div class="pin-value" id="pin-val">------</div>
             </div>
@@ -617,10 +731,19 @@
                 <button class="btn btn-refresh" id="btn-refresh">Обновить PIN</button>
                 <button class="btn btn-revoke" id="btn-revoke">Сбросить связи</button>
             </div>
+
+            <!-- Autostart with Windows Toggle Row -->
+            <div class="toggle-wrapper">
+                <span class="toggle-label">Автозапуск с Windows</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-autostart">
+                    <span class="slider"></span>
+                </label>
+            </div>
         </div>
 
         <div id="main-banner">
-            <div class="gold-calligraphy">✨ Special Edition for Shelikhov O. Yu. ✨</div>
+            <div class="gold-calligraphy salute-trigger" title="Нажмите для салюта!">✨ Special Edition for Shelikhov O. Yu. ✨</div>
         </div>
     </div>
 
@@ -628,9 +751,9 @@
     <div id="special-view" class="view">
         <button class="back-btn" id="btn-back">← Главный экран</button>
 
-        <div style="text-align: center; margin-top: 10px;">
-            <div class="gold-calligraphy special-title">Special Edition for Shelikhov O. Yu.</div>
-            <div class="special-subtitle">VIP Эксклюзивная версия</div>
+        <div style="text-align: center; margin-top: 6px;">
+            <div class="gold-calligraphy special-title salute-trigger" title="Нажмите для салюта!">Special Edition for Shelikhov O. Yu.</div>
+            <div class="special-subtitle">Эксклюзивная версия</div>
         </div>
 
         <div class="special-body">
@@ -639,12 +762,24 @@
             <i>Спасибо за то, что вдохновляете на новые победы!</i>
         </div>
 
-        <div class="toggle-wrapper">
-            <span class="toggle-label">Надпись на главном экране</span>
+        <div class="toggle-wrapper gold-border">
+            <span class="toggle-label" style="color: #fff8e1;">Надпись на главном экране</span>
             <label class="switch">
                 <input type="checkbox" id="toggle-banner">
-                <span class="slider"></span>
+                <span class="slider gold-slider"></span>
             </label>
+        </div>
+    </div>
+
+    <!-- Custom Glassmorphism Confirm Overlay for Revoke -->
+    <div class="confirm-overlay" id="confirm-overlay">
+        <div class="confirm-card">
+            <div class="confirm-title">⚠️ Сбросить все связи?</div>
+            <div class="confirm-text">Все подключённые мобильные устройства будут немедленно отключены. Потребуется повторный ввод PIN-кода.</div>
+            <div class="confirm-btns">
+                <button class="btn-cancel" id="btn-cancel-revoke">Отмена</button>
+                <button class="btn-confirm-delete" id="btn-do-revoke">Да, сбросить</button>
+            </div>
         </div>
     </div>
 
@@ -662,11 +797,12 @@
             });
         });
 
-        // --- 2. Canvas Particle Background (Turquoise & Violet accents) ---
+        // --- 2. Canvas Particle Background & FIREWORKS SALUTE ENGINE ---
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         let width, height;
         let particles = [];
+        let fireworks = [];
 
         function resize() {
             width = canvas.width = window.innerWidth;
@@ -682,7 +818,6 @@
                 this.vx = (Math.random() - 0.5) * 0.7;
                 this.vy = (Math.random() - 0.5) * 0.7;
                 this.radius = Math.random() * 2 + 1;
-                // Turquoise and Violet particles only!
                 this.color = Math.random() > 0.5 ? 'rgba(0, 240, 255, 0.35)' : 'rgba(157, 78, 221, 0.35)';
             }
             update() {
@@ -700,6 +835,50 @@
                 ctx.fill();
                 ctx.shadowBlur = 0;
             }
+        }
+
+        // Fireworks Spark Class for the Salute!
+        class FireworkSpark {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 6 + 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.radius = Math.random() * 3 + 1.5;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.02 + 0.015;
+                const colors = ['#ffd700', '#ffa000', '#ffffff', '#00f0ff', '#ffecb3'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.08; // slight gravity
+                this.vx *= 0.96; // air resistance
+                this.vy *= 0.96;
+                this.alpha -= this.decay;
+            }
+            draw() {
+                if (this.alpha <= 0) return;
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function launchSalute(x, y) {
+            for (let i = 0; i < 70; i++) {
+                fireworks.push(new FireworkSpark(x, y));
+            }
+            showToast('🎆 Праздничный салют в честь Шелихова О. Ю.!', 'var(--gold-primary)');
         }
 
         for (let i = 0; i < 40; i++) particles.push(new Particle());
@@ -739,6 +918,16 @@
                     ctx.stroke();
                 }
             }
+
+            // Update & Draw Fireworks
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                fireworks[i].update();
+                fireworks[i].draw();
+                if (fireworks[i].alpha <= 0) {
+                    fireworks.splice(i, 1);
+                }
+            }
+
             requestAnimationFrame(animate);
         }
         animate();
@@ -751,7 +940,11 @@
         const starBtn = document.getElementById('star-btn');
         const btnBack = document.getElementById('btn-back');
         const toggleBanner = document.getElementById('toggle-banner');
+        const toggleAutostart = document.getElementById('toggle-autostart');
         const mainBanner = document.getElementById('main-banner');
+        const confirmOverlay = document.getElementById('confirm-overlay');
+        const btnCancelRevoke = document.getElementById('btn-cancel-revoke');
+        const btnDoRevoke = document.getElementById('btn-do-revoke');
         const toast = document.getElementById('toast');
 
         function showToast(msg, color = 'var(--accent-cyan)') {
@@ -779,6 +972,16 @@
             document.body.classList.remove('show-special');
         });
 
+        // Salute / Fireworks triggers on clicking any gold inscription
+        document.querySelectorAll('.salute-trigger').forEach(el => {
+            el.addEventListener('click', (e) => {
+                const rect = el.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                launchSalute(x, y);
+            });
+        });
+
         toggleBanner.addEventListener('change', () => {
             const show = toggleBanner.checked;
             updateBannerVisibility(show);
@@ -788,6 +991,16 @@
                 body: JSON.stringify({ show: show })
             }).catch(() => { });
             showToast(show ? '✨ Эксклюзивная подпись включена!' : 'Подпись скрыта', 'var(--gold-primary)');
+        });
+
+        toggleAutostart.addEventListener('change', () => {
+            const enabled = toggleAutostart.checked;
+            fetch('/local/autostart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: enabled })
+            }).catch(() => { });
+            showToast(enabled ? '🚀 Автозапуск с Windows включён!' : '❌ Автозапуск отключён', 'var(--accent-teal)');
         });
 
         btnRefresh.addEventListener('click', () => {
@@ -802,12 +1015,24 @@
                 .catch(() => showToast('Ошибка соединения с сервером', 'var(--accent-red)'));
         });
 
+        // Custom Confirm Modal Logic for Revoke
         btnRevoke.addEventListener('click', () => {
-            if (confirm('Все подключённые устройства будут отключены.\nПродолжить?')) {
-                fetch('/local/revoke', { method: 'POST' })
-                    .then(() => showToast('⚠️ Все устройства успешно отключены', 'var(--accent-red)'))
-                    .catch(() => showToast('Ошибка соединения с сервером', 'var(--accent-red)'));
-            }
+            confirmOverlay.classList.add('active');
+        });
+
+        btnCancelRevoke.addEventListener('click', () => {
+            confirmOverlay.classList.remove('active');
+        });
+
+        confirmOverlay.addEventListener('click', (e) => {
+            if (e.target === confirmOverlay) confirmOverlay.classList.remove('active');
+        });
+
+        btnDoRevoke.addEventListener('click', () => {
+            confirmOverlay.classList.remove('active');
+            fetch('/local/revoke', { method: 'POST' })
+                .then(() => showToast('⚠️ Все устройства успешно отключены', 'var(--accent-red)'))
+                .catch(() => showToast('Ошибка соединения с сервером', 'var(--accent-red)'));
         });
 
         function fetchStatus() {
@@ -815,13 +1040,17 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.ip) {
-                        // Ensure no port is displayed
                         ipVal.textContent = data.ip.split(':')[0];
                     }
                     if (data.pin) pinVal.textContent = data.pin;
                     if (data.show_special_edition !== undefined) {
                         if (toggleBanner.checked !== data.show_special_edition) {
                             updateBannerVisibility(data.show_special_edition);
+                        }
+                    }
+                    if (data.autostart !== undefined) {
+                        if (toggleAutostart.checked !== data.autostart) {
+                            toggleAutostart.checked = data.autostart;
                         }
                     }
                 })

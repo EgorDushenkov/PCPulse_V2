@@ -34,6 +34,11 @@ public class TrayAndGUI {
 
     public void showWindow() {
         try {
+            String exePath = pcpulse.ServerApp.getRealExePath();
+            if (exePath != null && !exePath.isEmpty() && new java.io.File(exePath).exists()) {
+                new ProcessBuilder(exePath, "--ui").start();
+                return;
+            }
             java.io.File launcherExe = new java.io.File("launcher.exe");
             java.io.File pcPulseExe = new java.io.File("PC Pulse.exe");
             if (pcPulseExe.exists()) {

@@ -41,6 +41,11 @@ public class ServerApp {
             return;
         }
 
+        boolean autostart = java.util.prefs.Preferences.userNodeForPackage(TrayAndGUI.class).getBoolean("autostart_enabled", false);
+        if (autostart) {
+            updateAutostartRegistry(true);
+        }
+
         SystemMonitor monitor = new SystemMonitor();
         WorkerManager worker = new WorkerManager();
         AuthManager auth = new AuthManager();
@@ -80,5 +85,54 @@ public class ServerApp {
                 System.err.println("[ServerApp] Loop error: " + t.getMessage());
             }
         }, 0, 500, TimeUnit.MILLISECONDS);
+    }
+
+    public static String getRealExePath() {
+        String path = System.getProperty("pcpulse.exe.path");
+        if (path == null || path.trim().isEmpty()) {
+            path = System.getenv("PCPULSE_EXE_PATH");
+        }
+        if (path == null || path.trim().isEmpty()) {
+            java.io.File pcPulse = new java.io.File("PC Pulse.exe");
+            if (pcPulse.exists()) {
+                path = pcPulse.getAbsolutePath();
+            } else {
+                java.io.File launcher = new java.io.File("launcher.exe");
+                if (launcher.exists()) {
+                    path = launcher.getAbsolutePath();
+                } else {
+                    path = "PC Pulse.exe";
+                }
+            }
+        }
+        return path;
+    }
+
+    public static void updateAutostartRegistry(boolean enabled) {
+        try {
+            String exePath = getRealExePath();
+            String psCmd;
+            if (enabled) {
+                psCmd = "$rawPath = '" + exePath.replace("'", "''") + "'; " +
+                        "$path = [char]34 + $rawPath + [char]34; " +
+                        "$dir = Split-Path $rawPath; if (-not $dir) { $dir = $pwd.Path }; " +
+                        "$val = $path + ' --autostart'; " +
+                        "try { New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'PCPulseServer' -Value $val -PropertyType String -Force -ErrorAction SilentlyContinue } catch {}; " +
+                        "try { $wsh = New-Object -ComObject WScript.Shell; $lnk = $wsh.CreateShortcut($env:APPDATA + '\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\PCPulseServer.lnk'); $lnk.TargetPath = $rawPath; $lnk.Arguments = '--autostart'; $lnk.WorkingDirectory = $dir; $lnk.Save(); } catch {}; " +
+                        "try { $action = New-ScheduledTaskAction -Execute $rawPath -Argument '--autostart' -WorkingDirectory $dir; $trigger = New-ScheduledTaskTrigger -AtLogOn; Register-ScheduledTask -TaskName 'PCPulseServer' -Action $action -Trigger $trigger -RunLevel Highest -Force -ErrorAction SilentlyContinue; } catch {}; " +
+                        "exit 0";
+                System.out.println("[Autostart] Enabling for: " + exePath);
+            } else {
+                psCmd = "try { Remove-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'PCPulseServer' -ErrorAction SilentlyContinue } catch {}; " +
+                        "try { Remove-Item ($env:APPDATA + '\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\PCPulseServer.lnk') -ErrorAction SilentlyContinue } catch {}; " +
+                        "try { Unregister-ScheduledTask -TaskName 'PCPulseServer' -Confirm:$false -ErrorAction SilentlyContinue } catch {}; " +
+                        "exit 0";
+                System.out.println("[Autostart] Disabling");
+            }
+            ProcessBuilder pb = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psCmd);
+            pb.start().waitFor();
+        } catch (Exception e) {
+            System.err.println("[Autostart] Error updating registry: " + e.getMessage());
+        }
     }
 }
