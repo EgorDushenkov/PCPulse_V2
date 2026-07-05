@@ -47,7 +47,7 @@ public class ServerApp {
 
         worker.start();
 
-        WebServer server = new WebServer(worker, auth);
+        WebServer server = new WebServer(worker, auth, monitor);
 
         TrayAndGUI gui = new TrayAndGUI(
             monitor.getLocalIp(),

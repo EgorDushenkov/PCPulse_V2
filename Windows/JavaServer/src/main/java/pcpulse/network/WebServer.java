@@ -4,7 +4,10 @@ import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.websocket.WsContext;
 import pcpulse.auth.AuthManager;
+import pcpulse.gui.TrayAndGUI;
+import pcpulse.system.SystemMonitor;
 import pcpulse.worker.WorkerManager;
+import java.util.prefs.Preferences;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -25,12 +28,14 @@ import java.util.stream.Collectors;
 public class WebServer {
     private final WorkerManager worker;
     private final AuthManager auth;
+    private final SystemMonitor monitor;
     private final Set<WsContext> clients = ConcurrentHashMap.newKeySet();
     private Javalin app;
 
-    public WebServer(WorkerManager worker, AuthManager auth) {
+    public WebServer(WorkerManager worker, AuthManager auth, SystemMonitor monitor) {
         this.worker = worker;
         this.auth = auth;
+        this.monitor = monitor;
     }
 
     public int start(int port) {
@@ -305,6 +310,53 @@ public class WebServer {
                 os.flush();
             } catch (Exception ignored) {}
             ctx.result("OK");
+        });
+
+        app.get("/", ctx -> {
+            File f = new File("gui.html");
+            if (f.exists()) {
+                ctx.contentType("text/html; charset=utf-8").result(Files.readString(f.toPath()));
+            } else {
+                ctx.result("PC Pulse Server Active");
+            }
+        });
+
+        app.get("/gui.html", ctx -> {
+            File f = new File("gui.html");
+            if (f.exists()) {
+                ctx.contentType("text/html; charset=utf-8").result(Files.readString(f.toPath()));
+            } else {
+                ctx.status(404).result("gui.html not found");
+            }
+        });
+
+        app.get("/local/status", ctx -> {
+            Map<String, Object> res = new HashMap<>();
+            res.put("ip", monitor.getLocalIp() + ":" + ctx.port());
+            res.put("pin", auth.getPin());
+            res.put("show_special_edition", Preferences.userNodeForPackage(TrayAndGUI.class).getBoolean("show_special_edition_label", false));
+            ctx.json(res);
+        });
+
+        app.post("/local/pin/refresh", ctx -> {
+            auth.regeneratePin();
+            ctx.json(Collections.singletonMap("pin", auth.getPin()));
+        });
+
+        app.post("/local/revoke", ctx -> {
+            auth.revokeAll();
+            ctx.json(Collections.singletonMap("status", "ok"));
+        });
+
+        app.post("/local/special_edition", ctx -> {
+            try {
+                var node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(ctx.body());
+                boolean show = node.has("show") && node.get("show").asBoolean();
+                Preferences.userNodeForPackage(TrayAndGUI.class).putBoolean("show_special_edition_label", show);
+                ctx.json(Collections.singletonMap("status", "ok"));
+            } catch (Exception e) {
+                ctx.status(400).result("Error");
+            }
         });
 
         app.ws("/ws", ws -> {

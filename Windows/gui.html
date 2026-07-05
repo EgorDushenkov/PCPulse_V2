@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Pulse Server • Special Edition</title>
+    <style>
+        :root {
+            --bg-color: #0b0d13;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-border-hover: rgba(255, 215, 0, 0.4);
+            --gold-primary: #ffd700;
+            --gold-light: #fff8e1;
+            --gold-dark: #ffa000;
+            --text-main: #f0f2f5;
+            --text-muted: #9ba1ad;
+            --accent-blue: #58a6ff;
+            --accent-green: #50c878;
+            --accent-red: #ff5555;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Ambient Animated Orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            animation: floatOrb 12s ease-in-out infinite alternate;
+            pointer-events: none;
+        }
+        .orb-1 {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.18), transparent 70%);
+            top: -50px; left: -50px;
+        }
+        .orb-2 {
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(88, 166, 255, 0.15), transparent 70%);
+            bottom: -100px; right: -50px;
+            animation-duration: 15s;
+            animation-delay: -3s;
+        }
+        .orb-3 {
+            width: 250px; height: 250px;
+            background: radial-gradient(circle, rgba(80, 200, 120, 0.12), transparent 70%);
+            top: 40%; left: 60%;
+            animation-duration: 18s;
+            animation-delay: -7s;
+        }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(40px, -30px) scale(1.15); }
+            100% { transform: translate(-20px, 40px) scale(0.95); }
+        }
+
+        /* Canvas Background */
+        #bg-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Glass Card Container */
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 440px;
+            padding: 28px 32px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(28px) saturate(190%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+            overflow: hidden;
+        }
+
+        /* Interactive Spotlight inside cards */
+        .spotlight {
+            position: relative;
+            overflow: hidden;
+        }
+        .spotlight::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(350px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 215, 0, 0.15), transparent 60%);
+            border-radius: inherit;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            z-index: 1;
+        }
+        .spotlight:hover::before {
+            opacity: 1;
+        }
+        .spotlight:hover {
+            border-color: rgba(255, 215, 0, 0.35);
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Header Bar */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 2;
+        }
+        .title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-dot {
+            width: 10px; height: 10px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--accent-green);
+            animation: pulseDot 2s infinite;
+        }
+        @keyframes pulseDot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+        .title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(90deg, #ffffff, #d0d5dd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Star Button */
+        .star-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            z-index: 5;
+            color: var(--gold-primary);
+            font-size: 18px;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.15);
+        }
+        .star-btn:hover {
+            transform: rotate(72deg) scale(1.15);
+            background: rgba(255, 215, 0, 0.25);
+            border-color: var(--gold-primary);
+            color: #fff;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Sections */
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+        .ip-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            text-align: center;
+            margin-bottom: 24px;
+            text-shadow: 0 0 15px rgba(88, 166, 255, 0.4);
+            position: relative;
+            z-index: 2;
+            font-family: 'Consolas', monospace;
+        }
+
+        /* Frosted PIN Box */
+        .pin-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(80, 200, 120, 0.3);
+            border-radius: 24px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 28px;
+            position: relative;
+            z-index: 2;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(80, 200, 120, 0.1);
+            transition: all 0.3s ease;
+        }
+        .pin-box:hover {
+            border-color: rgba(80, 200, 120, 0.6);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(80, 200, 120, 0.25);
+            transform: scale(1.02);
+        }
+        .pin-value {
+            font-family: 'Consolas', monospace;
+            font-size: 46px;
+            font-weight: 800;
+            color: var(--accent-green);
+            letter-spacing: 6px;
+            text-shadow: 0 0 20px rgba(80, 200, 120, 0.6);
+        }
+
+        /* Buttons Grid */
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 2;
+        }
+        .btn {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 14px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(250px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(255, 255, 255, 0.2), transparent 60%);
+            border-radius: inherit;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .btn:hover::before {
+            opacity: 1;
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn-refresh:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 10px 25px rgba(88, 166, 255, 0.3);
+        }
+        .btn-revoke {
+            background: rgba(255, 85, 85, 0.15);
+            border-color: rgba(255, 85, 85, 0.3);
+        }
+        .btn-revoke:hover {
+            background: rgba(255, 85, 85, 0.3);
+            border-color: var(--accent-red);
+            box-shadow: 0 10px 25px rgba(255, 85, 85, 0.4);
+        }
+
+        /* Shimmering Liquid Gold Calligraphy */
+        .gold-calligraphy {
+            font-family: 'Segoe Script', 'Monotype Corsiva', 'Gabriola', 'Brush Script MT', cursive;
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            background: linear-gradient(120deg, #ffd700 0%, #fff8e1 25%, #ffa000 50%, #ffd700 75%, #fff8e1 100%);
+            background-size: 300% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: liquidGold 4s linear infinite;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.35));
+            transition: filter 0.3s ease, transform 0.3s ease;
+            cursor: default;
+        }
+        @keyframes liquidGold {
+            0% { background-position: 0% center; }
+            100% { background-position: 300% center; }
+        }
+        .gold-calligraphy:hover {
+            filter: drop-shadow(0 0 18px rgba(255, 215, 0, 0.8));
+            transform: scale(1.04);
+        }
+
+        /* Main Screen Banner */
+        #main-banner {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease, margin-top 0.5s ease;
+            border-top: 1px solid transparent;
+        }
+        #main-banner.show {
+            max-height: 100px;
+            opacity: 1;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 215, 0, 0.25);
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Modal Card */
+        .modal-card {
+            width: 90%;
+            max-width: 440px;
+            padding: 34px;
+            background: rgba(18, 20, 28, 0.85);
+            backdrop-filter: blur(35px) saturate(200%);
+            -webkit-backdrop-filter: blur(35px) saturate(200%);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            border-radius: 36px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .modal-overlay.active .modal-card {
+            transform: scale(1) translateY(0);
+        }
+        .modal-card::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle at center, rgba(255, 215, 0, 0.08), transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .modal-title {
+            font-size: 26px;
+            margin-bottom: 8px;
+            z-index: 2;
+            position: relative;
+        }
+        .modal-subtitle {
+            font-size: 13px;
+            color: #d4af37;
+            text-align: center;
+            font-style: italic;
+            margin-bottom: 22px;
+            z-index: 2;
+            position: relative;
+            opacity: 0.9;
+        }
+        .modal-body {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            text-align: center;
+            margin-bottom: 28px;
+            z-index: 2;
+            position: relative;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Toggle Switch iOS 26 style */
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 14px 18px;
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            margin-bottom: 24px;
+            z-index: 2;
+            position: relative;
+            transition: border-color 0.3s ease;
+        }
+        .toggle-wrapper:hover {
+            border-color: rgba(255, 215, 0, 0.4);
+        }
+        .toggle-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff8e1;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border-radius: 34px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+        }
+        input:checked + .slider {
+            background: linear-gradient(90deg, #ffd700, #ffa000);
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .btn-close {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(90deg, #ffd700, #ffa000);
+            color: #000;
+            font-weight: 800;
+            font-size: 14px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 2;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.3);
+        }
+        .btn-close:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(20, 22, 30, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--accent-blue);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(88, 166, 255, 0.3);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 1000;
+        }
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <canvas id="bg-canvas"></canvas>
+
+    <div id="toast">Уведомление</div>
+
+    <div class="container spotlight tilt-effect" id="main-card">
+        <div class="header">
+            <div class="title-wrapper">
+                <div class="status-dot"></div>
+                <div class="title">PC Pulse Активен</div>
+            </div>
+            <div class="star-btn" id="star-btn" title="Информация о специальной версии">★</div>
+        </div>
+
+        <div class="section-label">IP-адрес для подключения</div>
+        <div class="ip-value" id="ip-val">Загрузка...</div>
+
+        <div class="section-label">Разовый PIN-код</div>
+        <div class="pin-box">
+            <div class="pin-value" id="pin-val">------</div>
+        </div>
+
+        <div class="btn-grid">
+            <button class="btn btn-refresh" id="btn-refresh">Обновить PIN</button>
+            <button class="btn btn-revoke" id="btn-revoke">Сбросить связи</button>
+        </div>
+
+        <div id="main-banner">
+            <div class="gold-calligraphy tilt-effect">✨ Special Edition for Shelikhov O. Yu. ✨</div>
+        </div>
+    </div>
+
+    <!-- Modal Dialog -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-card spotlight tilt-effect">
+            <div class="gold-calligraphy modal-title">Special Edition for Shelikhov O. Yu.</div>
+            <div class="modal-subtitle">Эксклюзивная версия программы PC Pulse</div>
+            
+            <div class="modal-body">
+                В знак глубокой благодарности за Ваше наставничество,<br>
+                бесценный педагогический труд и веру в успех!<br><br>
+                Благодаря Вашему профессиональному руководству и поддержке<br>
+                этот проект завоевал <b>3-е место</b> во Всероссийском конкурсе.<br><br>
+                <i>Спасибо за то, что вдохновляете на новые победы!</i>
+            </div>
+
+            <div class="toggle-wrapper">
+                <span class="toggle-label">Надпись на главном экране</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-banner">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <button class="btn-close" id="btn-close-modal">Закрыть окно</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Spotlight Cursor Tracking & Parallax Tilt ---
+        document.addEventListener('mousemove', (e) => {
+            document.querySelectorAll('.spotlight, .btn, .pin-box, .toggle-wrapper').forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                el.style.setProperty('--mouse-x', `${x}px`);
+                el.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+
+        document.querySelectorAll('.tilt-effect').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = ((y - centerY) / centerY) * -5;
+                const rotateY = ((x - centerX) / centerX) * 5;
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
+            });
+        });
+
+        // --- 2. Canvas Particle Background ---
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.radius = Math.random() * 2 + 1;
+                this.color = Math.random() > 0.4 ? 'rgba(255, 215, 0, 0.4)' : (Math.random() > 0.5 ? 'rgba(88, 166, 255, 0.3)' : 'rgba(80, 200, 120, 0.3)');
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        for (let i = 0; i < 45; i++) particles.push(new Particle());
+
+        let mouseX = -1000, mouseY = -1000;
+        window.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                // Draw lines between close particles
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 100) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(255, 215, 0, ${0.15 * (1 - dist / 100)})`;
+                        ctx.lineWidth = 0.6;
+                        ctx.stroke();
+                    }
+                }
+
+                // Connect with cursor
+                const mdx = particles[i].x - mouseX;
+                const mdy = particles[i].y - mouseY;
+                const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+                if (mdist < 140) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(mouseX, mouseY);
+                    ctx.strokeStyle = `rgba(255, 215, 0, ${0.25 * (1 - mdist / 140)})`;
+                    ctx.lineWidth = 0.8;
+                    ctx.stroke();
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // --- 3. UI Logic & API Integration ---
+        const ipVal = document.getElementById('ip-val');
+        const pinVal = document.getElementById('pin-val');
+        const btnRefresh = document.getElementById('btn-refresh');
+        const btnRevoke = document.getElementById('btn-revoke');
+        const starBtn = document.getElementById('star-btn');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const toggleBanner = document.getElementById('toggle-banner');
+        const mainBanner = document.getElementById('main-banner');
+        const toast = document.getElementById('toast');
+
+        function showToast(msg, color = 'var(--accent-blue)') {
+            toast.textContent = msg;
+            toast.style.borderColor = color;
+            toast.style.boxShadow = `0 15px 30px rgba(0,0,0,0.6), 0 0 20px ${color}`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function updateBannerVisibility(show) {
+            if (show) {
+                mainBanner.classList.add('show');
+            } else {
+                mainBanner.classList.remove('show');
+            }
+            toggleBanner.checked = show;
+        }
+
+        starBtn.addEventListener('click', () => {
+            modalOverlay.classList.add('active');
+        });
+
+        btnCloseModal.addEventListener('click', () => {
+            modalOverlay.classList.remove('active');
+        });
+
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) modalOverlay.classList.remove('active');
+        });
+
+        toggleBanner.addEventListener('change', () => {
+            const show = toggleBanner.checked;
+            updateBannerVisibility(show);
+            fetch('/local/special_edition', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ show: show })
+            }).catch(() => {});
+            showToast(show ? '✨ Эксклюзивная подпись включена!' : 'Подпись скрыта', 'var(--gold-primary)');
+        });
+
+        btnRefresh.addEventListener('click', () => {
+            fetch('/local/pin/refresh', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.pin) {
+                        pinVal.textContent = data.pin;
+                        showToast('🔄 Разовый PIN-код обновлён', 'var(--accent-green)');
+                    }
+                })
+                .catch(() => showToast('Ошибка соединения с сервером', 'var(--accent-red)'));
+        });
+
+        btnRevoke.addEventListener('click', () => {
+            if (confirm('Все подключённые устройства будут отключены.\nПродолжить?')) {
+                fetch('/local/revoke', { method: 'POST' })
+                    .then(() => showToast('⚠️ Все устройства успешно отключены', 'var(--accent-red)'))
+                    .catch(() => showToast('Ошибка соединения с сервером', 'var(--accent-red)'));
+            }
+        });
+
+        function fetchStatus() {
+            fetch('/local/status')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ip) ipVal.textContent = data.ip;
+                    if (data.pin) pinVal.textContent = data.pin;
+                    if (data.show_special_edition !== undefined) {
+                        if (toggleBanner.checked !== data.show_special_edition) {
+                            updateBannerVisibility(data.show_special_edition);
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+
+        fetchStatus();
+        setInterval(fetchStatus, 1000);
+    </script>
+</body>
+</html>

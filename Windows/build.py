@@ -55,11 +55,17 @@ def main():
     shutil.copy2(os.path.join(java_dir, "target", "pcpulse-server-1.0-SNAPSHOT.jar"), "app.jar")
     shutil.copy2(os.path.join(root, "dist", "worker.exe"), "worker.exe")
 
-    print("=== 3. Launcher (JRE + JAR + Worker) ===")
+    print("=== 3. Launcher (JRE + JAR + Worker + GUI) ===")
     run(["python", "-m", "PyInstaller", "--noconfirm", "--onefile", "--windowed", "--icon=ioo.ico",
          "--add-data", f"{JDK_DIR};{JDK_DIR}",
          "--add-data", "app.jar;.",
          "--add-data", "worker.exe;.",
+         "--add-data", "gui.html;.",
+         "--hidden-import=webview",
+         "--hidden-import=clr_loader",
+         "--hidden-import=pythonnet",
+         "--hidden-import=bottle",
+         "--hidden-import=proxy_tools",
          "launcher.py"], cwd=root)
 
     print("=== Copying final executable ===")
