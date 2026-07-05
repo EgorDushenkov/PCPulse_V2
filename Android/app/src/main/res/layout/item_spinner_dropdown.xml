@@ -5,8 +5,8 @@
     android:layout_height="wrap_content"
     android:paddingVertical="14dp"
     android:paddingHorizontal="16dp"
-    android:background="#1E1E1E"
-    android:textColor="#E0E0E0"
+    android:background="@drawable/bg_spinner_item_selector"
+    android:textColor="#FFFFFF"
     android:textSize="15sp"
     android:ellipsize="end"
     android:singleLine="true" />

@@ -114,6 +114,22 @@ class WidgetDesignerActivity : BaseActivity() {
         canvas.post {
             updateCanvasSize()
         }
+        updateLabels()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateLabels()
+    }
+
+    private fun updateLabels() {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
+        findViewById<TextView>(R.id.tvDesignerTitle)?.text = if (isRussian) "Конструктор виджета" else "Widget Designer"
+        findViewById<Button>(R.id.btnSaveWidget)?.text = if (isRussian) "Готово" else "Done"
+        findViewById<TextView>(R.id.tvPresetsLabel)?.text = if (isRussian) "Размер виджета (ячейки):" else "Widget size (cells):"
+        findViewById<Button>(R.id.btnAddElement)?.text = if (isRussian) "+ Добавить элемент" else "+ Add element"
+        btnToggleEdit.text = if (isEditMode) "✓" else "✎"
     }
 
     private fun toggleEditMode() {
@@ -136,8 +152,8 @@ class WidgetDesignerActivity : BaseActivity() {
     private fun setupDeviceSpinner() {
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         val devices = (prefs.getStringSet("DEVICE_IPS", emptySet()) ?: emptySet()).toList()
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, devices)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        val adapter = ArrayAdapter(this, R.layout.item_spinner, devices)
+        adapter.setDropDownViewResource(R.layout.item_spinner_dropdown)
         deviceSpinner.adapter = adapter
         
         val initialPos = devices.indexOf(selectedDevice).coerceAtLeast(0)

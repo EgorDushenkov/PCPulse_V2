@@ -136,10 +136,12 @@ class MainActivity : BaseActivity() {
             val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
         }
+        updateLabels()
     }
 
     override fun onResume() {
         super.onResume()
+        updateLabels()
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
         val savedIpsSet = prefs.getStringSet("DEVICE_IPS", emptySet()) ?: emptySet()
         val toRemove = devices.filter { it.ipAddress !in savedIpsSet || prefs.getString("TOKEN_${it.ipAddress}", null) == null }
@@ -152,6 +154,26 @@ class MainActivity : BaseActivity() {
                 }
             }
             saveDevices()
+        }
+    }
+
+    private fun updateLabels() {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
+        findViewById<TextView>(R.id.title)?.text = if (isRussian) "Мои Устройства" else "My Devices"
+        
+        var changed = false
+        devices.forEach { dev ->
+            if (!dev.isOnline) {
+                val newName = if (isRussian) "Загрузка..." else "Loading..."
+                if (dev.pcName != newName && (dev.pcName == "Загрузка..." || dev.pcName == "Loading...")) {
+                    dev.pcName = newName
+                    changed = true
+                }
+            }
+        }
+        if (changed && ::deviceAdapter.isInitialized) {
+            deviceAdapter.notifyDataSetChanged()
         }
     }
 

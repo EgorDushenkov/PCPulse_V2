@@ -4,40 +4,41 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/dark_bg"
-    android:fillViewport="true"
-    android:clipToPadding="false"
-    android:padding="16dp">
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingBottom="24dp">
+        android:padding="16dp"
+        android:paddingBottom="40dp">
 
-        <!-- Header Bar -->
+        <!-- Top Header Bar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="24dp"
+            android:layout_marginTop="8dp">
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/btn_back"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="22dp"
-                app:cardElevation="2dp">
+                app:cardElevation="2dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground">
 
                 <ImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:layout_gravity="center"
-                    android:src="@drawable/ic_back" />
+                    android:src="@drawable/ic_back"
+                    android:contentDescription="Назад" />
             </androidx.cardview.widget.CardView>
 
             <TextView
@@ -48,11 +49,11 @@
                 android:layout_marginStart="16dp"
                 android:text="Настройки"
                 android:textColor="@color/text_white"
-                android:textSize="26sp"
+                android:textSize="24sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Section 1: Appearance -->
+        <!-- Section 1: App Theme -->
         <TextView
             android:id="@+id/theme_title"
             android:layout_width="wrap_content"
@@ -68,10 +69,10 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
             app:cardBackgroundColor="@color/card_bg"
             app:cardCornerRadius="20dp"
-            app:cardElevation="4dp"
-            android:layout_marginBottom="24dp">
+            app:cardElevation="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -86,31 +87,30 @@
                     android:text="Выберите цветовой акцент интерфейса"
                     android:textColor="@color/text_gray"
                     android:textSize="13sp"
-                    android:layout_marginBottom="14dp" />
+                    android:layout_marginBottom="16dp" />
 
-                <!-- Grid Row 1 -->
+                <!-- Theme Grid: 2x2 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginBottom="10dp">
+                    android:baselineAligned="false">
 
                     <LinearLayout
                         android:id="@+id/btn_theme_purple"
                         android:layout_width="0dp"
+                        android:layout_height="48dp"
                         android:layout_weight="1"
-                        android:layout_height="56dp"
                         android:layout_marginEnd="6dp"
                         android:background="@drawable/bg_theme_option_purple"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
+                        android:gravity="center"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="14dp">
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <View
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
                             android:background="@drawable/circle_theme_purple" />
 
                         <TextView
@@ -127,19 +127,18 @@
                     <LinearLayout
                         android:id="@+id/btn_theme_turquoise"
                         android:layout_width="0dp"
+                        android:layout_height="48dp"
                         android:layout_weight="1"
-                        android:layout_height="56dp"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_theme_option_turquoise"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
+                        android:gravity="center"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="14dp">
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <View
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
                             android:background="@drawable/circle_theme_turquoise" />
 
                         <TextView
@@ -154,28 +153,28 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Grid Row 2 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp"
+                    android:baselineAligned="false">
 
                     <LinearLayout
                         android:id="@+id/btn_theme_orange"
                         android:layout_width="0dp"
+                        android:layout_height="48dp"
                         android:layout_weight="1"
-                        android:layout_height="56dp"
                         android:layout_marginEnd="6dp"
                         android:background="@drawable/bg_theme_option_orange"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
+                        android:gravity="center"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="14dp">
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <View
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
                             android:background="@drawable/circle_theme_orange" />
 
                         <TextView
@@ -192,19 +191,18 @@
                     <LinearLayout
                         android:id="@+id/btn_theme_green"
                         android:layout_width="0dp"
+                        android:layout_height="48dp"
                         android:layout_weight="1"
-                        android:layout_height="56dp"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_theme_option_green"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
+                        android:gravity="center"
                         android:orientation="horizontal"
-                        android:paddingHorizontal="14dp">
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <View
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
                             android:background="@drawable/circle_theme_green" />
 
                         <TextView
@@ -237,17 +235,17 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
             app:cardBackgroundColor="@color/card_bg"
             app:cardCornerRadius="20dp"
-            app:cardElevation="4dp"
-            android:layout_marginBottom="24dp">
+            app:cardElevation="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingHorizontal="16dp"
-                android:paddingVertical="4dp">
+                android:paddingVertical="8dp">
 
                 <!-- Vibration Item -->
                 <LinearLayout
@@ -298,7 +296,8 @@
                     <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/switch_vibration"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        app:thumbTint="?attr/colorPrimary" />
                 </LinearLayout>
 
                 <View
@@ -347,7 +346,7 @@
                             android:id="@+id/device_names_desc"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Показывать названия железа вместо CPU/GPU"
+                            android:text="Показывать конкретные названия вместо CPU/GPU"
                             android:textColor="@color/text_gray"
                             android:textSize="13sp"
                             android:layout_marginTop="2dp" />
@@ -356,7 +355,8 @@
                     <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/switch_device_names"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        app:thumbTint="?attr/colorPrimary" />
                 </LinearLayout>
 
                 <View
@@ -414,16 +414,40 @@
                     <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/switch_language"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        app:thumbTint="?attr/colorPrimary" />
                 </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#12FFFFFF"
-                    android:layout_marginStart="52dp" />
+        <!-- Section 3: Notification Shade & Media -->
+        <TextView
+            android:id="@+id/media_section_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="УВЕДОМЛЕНИЯ И МЕДИА"
+            android:textColor="@color/text_gray"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="8dp" />
 
-                <!-- Media Notif Item -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp">
+
+                <!-- Media Notif Item (Moved from General) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -472,95 +496,84 @@
                     <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/switch_media_notif"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        app:thumbTint="?attr/colorPrimary" />
                 </LinearLayout>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
 
-        <!-- Section 3: Notification Shade -->
-        <TextView
-            android:id="@+id/media_section_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="УВЕДОМЛЕНИЯ И МЕДИА"
-            android:textColor="@color/text_gray"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.08"
-            android:layout_marginStart="8dp"
-            android:layout_marginBottom="8dp" />
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#12FFFFFF"
+                    android:layout_marginStart="52dp" />
 
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="4dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
+                <!-- Priority Device Item -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <FrameLayout
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:background="@drawable/bg_setting_icon_container">
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_priority" />
-                    </FrameLayout>
+                    android:orientation="vertical"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="16dp">
 
                     <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="14dp"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/default_media_title"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Приоритетное устройство в шторке"
-                            android:textColor="@color/text_white"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/default_media_desc"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Если несколько устройств играют музыку, в шторке останется только выбранное"
-                            android:textColor="@color/text_gray"
-                            android:textSize="13sp"
-                            android:layout_marginTop="2dp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:background="@drawable/bg_spinner_container"
-                    android:paddingHorizontal="6dp">
-
-                    <Spinner
-                        android:id="@+id/spinner_default_media"
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:dropDownVerticalOffset="4dp"
-                        android:spinnerMode="dropdown" />
-                </FrameLayout>
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <FrameLayout
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
+                            android:background="@drawable/bg_setting_icon_container">
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:src="@drawable/ic_priority" />
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="14dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/default_media_title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Приоритетное устройство в шторке"
+                                android:textColor="@color/text_white"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/default_media_desc"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Если несколько устройств играют музыку, в шторке останется только выбранное"
+                                android:textColor="@color/text_gray"
+                                android:textSize="13sp"
+                                android:layout_marginTop="2dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/bg_spinner_container"
+                        android:paddingHorizontal="6dp">
+
+                        <Spinner
+                            android:id="@+id/spinner_default_media"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:dropDownVerticalOffset="8dp"
+                            android:popupBackground="@drawable/bg_spinner_popup"
+                            android:spinnerMode="dropdown" />
+                    </FrameLayout>
+                </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
     </LinearLayout>
