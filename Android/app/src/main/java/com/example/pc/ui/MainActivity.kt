@@ -49,6 +49,11 @@ class MainActivity : BaseActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == PCForegroundService.ACTION_STATS_UPDATE) {
                 val ip = intent.getStringExtra("DEVICE_IP") ?: return
+                val authFailed = intent.getBooleanExtra("AUTH_FAILED", false)
+                if (authFailed) {
+                    runOnUiThread { handleAuthRevoked(ip) }
+                    return
+                }
                 val isOnline = intent.getBooleanExtra("IS_ONLINE", false)
                 val statsJson = intent.getStringExtra("STATS_JSON")
                 
@@ -61,13 +66,39 @@ class MainActivity : BaseActivity() {
                         runOnUiThread {
                             val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
                             val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
-                            Toast.makeText(this@MainActivity, if (isRussian) "������  ����������" else "Server  is unreachable", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MainActivity, if (isRussian) "  " else "Server  is unreachable", Toast.LENGTH_SHORT).show()
                         }
                     }
                     updateDeviceStatusOnly(ip, isOnline)
                 }
             }
         }
+    }
+
+    override fun onAuthFailed() {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val ip = prefs.getString("SERVER_IP", null)
+        if (ip != null) {
+            handleAuthRevoked(ip)
+        }
+    }
+
+    private fun handleAuthRevoked(ip: String) {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        prefs.edit().remove("TOKEN_$ip").apply()
+        val savedIpsSet = prefs.getStringSet("DEVICE_IPS", emptySet())?.toMutableSet() ?: mutableSetOf()
+        if (savedIpsSet.contains(ip)) {
+            savedIpsSet.remove(ip)
+            prefs.edit().putStringSet("DEVICE_IPS", savedIpsSet).apply()
+        }
+        val index = devices.indexOfFirst { it.ipAddress == ip }
+        if (index != -1) {
+            devices.removeAt(index)
+            deviceAdapter.notifyItemRemoved(index)
+            saveDevices()
+        }
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
+        Toast.makeText(this, if (isRussian) "⚠️ Связь с $ip сброшена, устройство и данные удалены" else "⚠️ Connection with $ip revoked, device removed", Toast.LENGTH_LONG).show()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -104,6 +135,23 @@ class MainActivity : BaseActivity() {
             vibrate()
             val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val savedIpsSet = prefs.getStringSet("DEVICE_IPS", emptySet()) ?: emptySet()
+        val toRemove = devices.filter { it.ipAddress !in savedIpsSet || prefs.getString("TOKEN_${it.ipAddress}", null) == null }
+        if (toRemove.isNotEmpty()) {
+            toRemove.forEach { dev ->
+                val index = devices.indexOfFirst { it.ipAddress == dev.ipAddress }
+                if (index != -1) {
+                    devices.removeAt(index)
+                    deviceAdapter.notifyItemRemoved(index)
+                }
+            }
+            saveDevices()
         }
     }
 

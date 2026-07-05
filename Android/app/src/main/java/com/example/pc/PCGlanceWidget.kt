@@ -420,13 +420,17 @@ class PCGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
         val action = intent.action
         if (action == "com.example.pc.ACTION_STATS_UPDATE") {
             val ip = intent.getStringExtra("DEVICE_IP")
-            val statsJson = intent.getStringExtra("DIRECT_STATS")
+            val statsJson = intent.getStringExtra("DIRECT_STATS") ?: intent.getStringExtra("STATS_JSON")
             val isOnline = intent.getBooleanExtra("IS_ONLINE", true)
+            val authFailed = intent.getBooleanExtra("AUTH_FAILED", false)
             
             if (ip != null) {
-                if (statsJson != null) {
+                if (statsJson != null && !authFailed) {
                     context.getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE)
                         .edit().putString(ip, statsJson).commit()
+                } else if (authFailed) {
+                    context.getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE)
+                        .edit().remove(ip).commit()
                 }
                 
                 val pendingResult = goAsync()
@@ -441,9 +445,14 @@ class PCGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
                             val widgetIp = prefs.getString("DEVICE_IP", "")
                             
                             if (widgetIp == ip) {
+                                if (authFailed) {
+                                    prefs.edit().remove("DEVICE_IP").remove("LAYOUT_JSON").apply()
+                                }
                                 updateAppWidgetState(context, id) { statePrefs ->
                                     statePrefs[PCGlanceWidget.IS_ONLINE_KEY] = isOnline
-                                    if (isOnline && statsJson != null) {
+                                    if (authFailed) {
+                                        statePrefs.remove(PCGlanceWidget.DATA_KEY)
+                                    } else if (isOnline && statsJson != null) {
                                         val lastOptimistic = statePrefs[PCGlanceWidget.LAST_UPDATE_KEY] ?: 0L
                                         if (System.currentTimeMillis() - lastOptimistic > 1000L) {
                                             statePrefs[PCGlanceWidget.DATA_KEY] = statsJson
@@ -453,7 +462,7 @@ class PCGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
                                 glanceAppWidget.update(context, id)
                             }
                         }
-                        Log.d("PC_WIDGET_DEBUG", "Ресивер: Состояние обновлено для IP: $ip, Online: $isOnline")
+                        Log.d("PC_WIDGET_DEBUG", "Ресивер: Состояние обновлено для IP: $ip, Online: $isOnline, AuthFailed: $authFailed")
                     } catch (e: Exception) {
                         Log.e("PC_WIDGET_DEBUG", "Ресивер: Ошибка", e)
                     } finally {

@@ -153,6 +153,7 @@ public class TrayAndGUI {
                 "Сброс устройств", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (ok == JOptionPane.YES_OPTION) {
                 auth.revokeAll();
+                pinLabel.setText(auth.getPin());
                 if (onRevoke != null) onRevoke.run();
                 JOptionPane.showMessageDialog(frame, "Все устройства отключены.", "Успешно", JOptionPane.INFORMATION_MESSAGE);
             }

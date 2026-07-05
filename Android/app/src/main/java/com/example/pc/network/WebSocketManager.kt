@@ -59,27 +59,35 @@ class WebSocketManager(
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                webSocket.close(1000, null)
                 isConnected = false
                 Log.d("WebSocket", "Closing: $code / $reason")
                 
-                // 4001 = невалидный токен, нет смысла реконнектиться
-                if (code == 4001) {
-                    Log.w("WebSocket", "Auth failed (4001), not reconnecting")
+                if (code == 4001 || reason.contains("4001") || reason.contains("Unauthorized", ignoreCase = true)) {
+                    Log.w("WebSocket", "Auth failed ($code), not reconnecting")
+                    handler.removeCallbacks(reconnectRunnable)
                     onStatusChanged?.invoke(false)
                     handler.post { onAuthFailed?.invoke() }
                     return
                 }
                 
+                webSocket.close(1000, null)
                 onStatusChanged?.invoke(false)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 val wasConnected = isConnected
                 isConnected = false
-                Log.e("WebSocket", "Failure: ${t.message}")
+                Log.e("WebSocket", "Failure: ${t.message}, code: ${response?.code()}")
                 onStatusChanged?.invoke(false)
                 
+                if (response?.code() == 401 || response?.code() == 403 || response?.code() == 4001 ||
+                    t.message?.contains("4001") == true || t.message?.contains("Unauthorized", ignoreCase = true) == true) {
+                    Log.w("WebSocket", "Auth failed in onFailure (${response?.code()}), not reconnecting")
+                    handler.removeCallbacks(reconnectRunnable)
+                    handler.post { onAuthFailed?.invoke() }
+                    return
+                }
+
                 if (!wasConnected) {
                     handler.post { onServerUnreachable?.invoke() }
                 }
@@ -91,9 +99,9 @@ class WebSocketManager(
                 isConnected = false
                 Log.d("WebSocket", "Closed: $code / $reason")
                 
-
-                if (code == 4001) {
+                if (code == 4001 || reason.contains("4001") || reason.contains("Unauthorized", ignoreCase = true)) {
                     Log.w("WebSocket", "Auth failed (4001), not reconnecting")
+                    handler.removeCallbacks(reconnectRunnable)
                     handler.post { onAuthFailed?.invoke() }
                     return
                 }
@@ -122,4 +130,3 @@ class WebSocketManager(
         isConnected = false
     }
 }
-

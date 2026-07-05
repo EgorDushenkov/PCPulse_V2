@@ -44,6 +44,23 @@ abstract class BaseActivity : AppCompatActivity() {
 
     open fun onStatsUpdated(stats: PCStats) {}
     open fun onStatusChanged(isOnline: Boolean) {}
+    open fun onAuthFailed() {
+        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+        val ip = intent.getStringExtra("DEVICE_IP") ?: prefs.getString("SERVER_IP", null)
+        if (ip != null) {
+            prefs.edit().remove("TOKEN_$ip").apply()
+            val savedIpsSet = prefs.getStringSet("DEVICE_IPS", emptySet())?.toMutableSet() ?: mutableSetOf()
+            if (savedIpsSet.contains(ip)) {
+                savedIpsSet.remove(ip)
+                prefs.edit().putStringSet("DEVICE_IPS", savedIpsSet).apply()
+            }
+        }
+        val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
+        Toast.makeText(this, if (isRussian) "⚠️ Связь с ПК сброшена, данные удалены" else "⚠️ Connection revoked by PC, data wiped", Toast.LENGTH_LONG).show()
+        if (this !is MainActivity) {
+            finish()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyAppTheme()
@@ -74,6 +91,9 @@ abstract class BaseActivity : AppCompatActivity() {
                 token = token,
                 onStatusChanged = { isOnline ->
                     runOnUiThread { onStatusChanged(isOnline) }
+                },
+                onAuthFailed = {
+                    runOnUiThread { onAuthFailed() }
                 },
                 onStatsReceived = { stats ->
                     onStatsUpdated(stats)

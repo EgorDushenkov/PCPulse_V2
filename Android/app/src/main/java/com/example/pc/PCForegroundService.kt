@@ -170,6 +170,19 @@ class PCForegroundService : Service() {
                         }
                     },
                     onAuthFailed = {
+                        val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+                        prefs.edit().remove("TOKEN_$ip").apply()
+                        val savedIpsSet = prefs.getStringSet("DEVICE_IPS", emptySet())?.toMutableSet() ?: mutableSetOf()
+                        if (savedIpsSet.contains(ip)) {
+                            savedIpsSet.remove(ip)
+                            prefs.edit().putStringSet("DEVICE_IPS", savedIpsSet).apply()
+                        }
+                        getSharedPreferences("PC_STATS_CACHE", Context.MODE_PRIVATE).edit().remove(ip).apply()
+                        deviceStats.remove(ip)
+                        connections[ip]?.disconnect()
+                        connections.remove(ip)
+                        broadcastOfflineForWidget(ip, true)
+                        updateNotification()
                         val intent = Intent(ACTION_STATS_UPDATE).apply {
                             setPackage(packageName)
                             putExtra("DEVICE_IP", ip)
@@ -213,11 +226,12 @@ class PCForegroundService : Service() {
         sendBroadcast(intent)
     }
 
-    private fun broadcastOfflineForWidget(ip: String) {
+    private fun broadcastOfflineForWidget(ip: String, authFailed: Boolean = false) {
         val widgetIntent = Intent("com.example.pc.ACTION_STATS_UPDATE").apply {
             component = ComponentName(this@PCForegroundService, PCGlanceWidgetReceiver::class.java)
             putExtra("DEVICE_IP", ip)
             putExtra("IS_ONLINE", false)
+            putExtra("AUTH_FAILED", authFailed)
         }
         sendBroadcast(widgetIntent)
     }

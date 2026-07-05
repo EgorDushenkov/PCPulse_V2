@@ -346,7 +346,11 @@ public class WebServer {
 
         app.post("/local/revoke", ctx -> {
             auth.revokeAll();
-            ctx.json(Collections.singletonMap("status", "ok"));
+            disconnectUnauthorized();
+            Map<String, String> res = new HashMap<>();
+            res.put("status", "ok");
+            res.put("pin", auth.getPin());
+            ctx.json(res);
         });
 
         app.post("/local/special_edition", ctx -> {

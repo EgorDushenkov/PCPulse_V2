@@ -1031,7 +1031,11 @@
         btnDoRevoke.addEventListener('click', () => {
             confirmOverlay.classList.remove('active');
             fetch('/local/revoke', { method: 'POST' })
-                .then(() => showToast('⚠️ Все устройства успешно отключены', 'var(--accent-red)'))
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.pin) pinVal.textContent = data.pin;
+                    showToast('⚠️ Все устройства успешно отключены', 'var(--accent-red)');
+                })
                 .catch(() => showToast('Ошибка соединения с сервером', 'var(--accent-red)'));
         });
 

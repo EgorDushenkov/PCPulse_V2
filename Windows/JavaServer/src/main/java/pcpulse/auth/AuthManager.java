@@ -53,6 +53,7 @@ public class AuthManager {
     public synchronized void revokeAll() {
         tokens.clear();
         saveTokens();
+        regeneratePin();
     }
 
     public synchronized int getAuthorizedCount() {
