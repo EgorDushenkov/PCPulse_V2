@@ -18,7 +18,6 @@ import android.widget.TextView
 class DashboardActivity : BaseActivity() {
 
     private lateinit var ipText: TextView
-    private lateinit var uptimeText: TextView
     private lateinit var cpuSpeedometer: SpeedometerView
     private lateinit var cpuNameText: TextView
     private lateinit var cpuDetailText: TextView
@@ -59,7 +58,6 @@ class DashboardActivity : BaseActivity() {
 
     override fun onStatusChanged(isOnline: Boolean) {
         if (!isOnline) {
-            uptimeText.text = "OFFLINE"
             cpuSpeedometer.setValue(0f)
             cpuDetailText.text = "--- MHz | --°C"
             ramSpeedometer.setValue(0f)
@@ -78,7 +76,6 @@ class DashboardActivity : BaseActivity() {
         findViewById<TextView>(R.id.dashTitle).text = if (isRussian) "Панель управления" else "Dashboard"
         
         ipText = findViewById(R.id.ipText)
-        uptimeText = findViewById(R.id.uptimeText)
         cpuSpeedometer = findViewById(R.id.cpuSpeedometer)
         cpuNameText = findViewById(R.id.cpuNameText)
         cpuDetailText = findViewById(R.id.cpuDetailText)
@@ -90,7 +87,7 @@ class DashboardActivity : BaseActivity() {
         netDownText = findViewById(R.id.netDownText)
         netUpText = findViewById(R.id.netUpText)
         btnDesigner = findViewById(R.id.btnDesigner)
-        btnDesigner.text = if (isRussian) "Открыть Конструктор" else "Open Designer"
+        btnDesigner.text = if (isRussian) "Конструктор" else "Designer"
 
         containers = mapOf(
             WidgetType.AUDIO_MIXER to findViewById(R.id.mixerContainer),
@@ -103,7 +100,6 @@ class DashboardActivity : BaseActivity() {
     private fun updateUI(s: PCStats) {
         val isRussian = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE).getString("APP_LANGUAGE", "RU") == "RU"
         val ip = intent.getStringExtra("DEVICE_IP") ?: ""
-        uptimeText.text = "${if (isRussian) "Время работы" else "Uptime"}: ${s.uptime} h"
         cpuSpeedometer.setValue(s.cpu.usage.toFloat())
         cpuNameText.text = s.cpu.name.replace("AMD ", "").replace("Intel(R) Core(TM) ", "").replace("Ryzen ", "R ").trim()
         cpuDetailText.text = "${s.cpu.freq.toInt()} MHz | ${s.cpu.temp}°C"

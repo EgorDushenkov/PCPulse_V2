@@ -16,7 +16,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -34,17 +36,25 @@
                     android:id="@+id/ipText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
                     android:text="IP: --"
-                    android:textColor="@color/text_gray"
-                    android:textSize="12sp" />
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
             </LinearLayout>
-            <TextView
-                android:id="@+id/uptimeText"
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDesigner"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Uptime: --"
-                android:textColor="@color/text_gray"
-                android:textStyle="bold" />
+                android:layout_marginStart="12dp"
+                android:text="Конструктор"
+                android:textColor="@color/text_white"
+                app:backgroundTint="@color/card_bg"
+                app:strokeColor="?attr/colorPrimary"
+                app:strokeWidth="1.5dp"
+                app:cornerRadius="12dp" />
         </LinearLayout>
 
         <androidx.cardview.widget.CardView
@@ -255,14 +265,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
 
-        <Button
-            android:id="@+id/btnDesigner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Открыть Конструктор"
-            app:backgroundTint="@color/card_bg"
-            android:textColor="@color/text_white"/>
+
 
         <Space
             android:layout_width="match_parent"
