@@ -19,10 +19,10 @@ def show_webview_window():
     window = webview.create_window(
         title="PC Pulse Server • Special Edition",
         url=url,
-        width=480,
-        height=620,
+        width=400,
+        height=500,
         resizable=False,
-        background_color="#0b0d13"
+        background_color="#080a10"
     )
     webview.start()
 

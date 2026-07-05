@@ -332,7 +332,7 @@ public class WebServer {
 
         app.get("/local/status", ctx -> {
             Map<String, Object> res = new HashMap<>();
-            res.put("ip", monitor.getLocalIp() + ":" + ctx.port());
+            res.put("ip", monitor.getLocalIp());
             res.put("pin", auth.getPin());
             res.put("show_special_edition", Preferences.userNodeForPackage(TrayAndGUI.class).getBoolean("show_special_edition_label", false));
             ctx.json(res);
