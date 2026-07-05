@@ -9,6 +9,7 @@ import com.example.pc.ui.widgets.*
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.widget.SwitchCompat
@@ -20,6 +21,11 @@ class SettingsActivity : BaseActivity() {
         setContentView(R.layout.activity_settings)
 
         val prefs = getSharedPreferences("PC_STATS_PREFS", Context.MODE_PRIVATE)
+
+        findViewById<View>(R.id.btn_back).setOnClickListener {
+            vibrate()
+            finish()
+        }
         
         val vibrationSwitch = findViewById<SwitchCompat>(R.id.switch_vibration)
         vibrationSwitch.isChecked = prefs.getBoolean("VIBRATION_ENABLED", true)
@@ -55,10 +61,21 @@ class SettingsActivity : BaseActivity() {
 
         updateDefaultMediaSpinner()
 
-        findViewById<Button>(R.id.btn_theme_purple).setOnClickListener { vibrate(); saveTheme("PURPLE") }
-        findViewById<Button>(R.id.btn_theme_turquoise).setOnClickListener { vibrate(); saveTheme("TURQUOISE") }
-        findViewById<Button>(R.id.btn_theme_orange).setOnClickListener { vibrate(); saveTheme("ORANGE") }
-        findViewById<Button>(R.id.btn_theme_green).setOnClickListener { vibrate(); saveTheme("GREEN") }
+        val currentTheme = prefs.getString("APP_THEME", "PURPLE") ?: "PURPLE"
+        val btnPurple = findViewById<View>(R.id.btn_theme_purple)
+        val btnTurquoise = findViewById<View>(R.id.btn_theme_turquoise)
+        val btnOrange = findViewById<View>(R.id.btn_theme_orange)
+        val btnGreen = findViewById<View>(R.id.btn_theme_green)
+
+        btnPurple.isSelected = (currentTheme == "PURPLE")
+        btnTurquoise.isSelected = (currentTheme == "TURQUOISE")
+        btnOrange.isSelected = (currentTheme == "ORANGE")
+        btnGreen.isSelected = (currentTheme == "GREEN")
+
+        btnPurple.setOnClickListener { vibrate(); saveTheme("PURPLE") }
+        btnTurquoise.setOnClickListener { vibrate(); saveTheme("TURQUOISE") }
+        btnOrange.setOnClickListener { vibrate(); saveTheme("ORANGE") }
+        btnGreen.setOnClickListener { vibrate(); saveTheme("GREEN") }
 
         updateLabels()
     }
@@ -71,7 +88,8 @@ class SettingsActivity : BaseActivity() {
         
         val spinner = findViewById<android.widget.Spinner>(R.id.spinner_default_media)
         val options = listOf(if (prefs.getString("APP_LANGUAGE", "RU") == "RU") "Не выбрано" else "None") + ipList
-        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, options)
+        val adapter = android.widget.ArrayAdapter(this, R.layout.item_spinner, options)
+        adapter.setDropDownViewResource(R.layout.item_spinner_dropdown)
         spinner.adapter = adapter
         
         val currentIndex = if (defaultMediaIp.isNullOrEmpty()) 0 else ipList.indexOf(defaultMediaIp) + 1
@@ -96,24 +114,30 @@ class SettingsActivity : BaseActivity() {
         val isRussian = prefs.getString("APP_LANGUAGE", "RU") == "RU"
 
         findViewById<TextView>(R.id.settings_title).text = if (isRussian) "Настройки" else "Settings"
-        findViewById<TextView>(R.id.theme_title).text = if (isRussian) "Тема приложения" else "App Theme"
         
-        findViewById<Button>(R.id.btn_theme_purple).text = if (isRussian) "Фиолетовая тема" else "Purple Theme"
-        findViewById<Button>(R.id.btn_theme_turquoise).text = if (isRussian) "Бирюзовая тема" else "Turquoise Theme"
-        findViewById<Button>(R.id.btn_theme_orange).text = if (isRussian) "Оранжевая тема" else "Orange Theme"
-        findViewById<Button>(R.id.btn_theme_green).text = if (isRussian) "Зеленая тема" else "Green Theme"
+        findViewById<TextView>(R.id.theme_title).text = if (isRussian) "ТЕМА ОФОРМЛЕНИЯ" else "APP THEME"
+        findViewById<TextView>(R.id.theme_desc).text = if (isRussian) "Выберите цветовой акцент интерфейса" else "Choose accent color for the interface"
+        
+        findViewById<TextView>(R.id.tv_theme_purple).text = if (isRussian) "Фиолетовая" else "Purple"
+        findViewById<TextView>(R.id.tv_theme_turquoise).text = if (isRussian) "Бирюзовая" else "Turquoise"
+        findViewById<TextView>(R.id.tv_theme_orange).text = if (isRussian) "Оранжевая" else "Orange"
+        findViewById<TextView>(R.id.tv_theme_green).text = if (isRussian) "Зеленая" else "Green"
+
+        findViewById<TextView>(R.id.general_title).text = if (isRussian) "ОСНОВНЫЕ" else "GENERAL"
 
         findViewById<TextView>(R.id.vibration_text).text = if (isRussian) "Виброотдача" else "Haptic Feedback"
         findViewById<TextView>(R.id.vibration_desc).text = if (isRussian) "Легкая вибрация при нажатии на кнопки" else "Light vibration on button clicks"
         
         findViewById<TextView>(R.id.device_names_text).text = if (isRussian) "Названия устройств" else "Device Names"
-        findViewById<TextView>(R.id.device_names_desc).text = if (isRussian) "Показывать названия железа вместо CPU/GPU" else "Show hardware names instead of CPU/GPU"
+        findViewById<TextView>(R.id.device_names_desc).text = if (isRussian) "Показывать конкретные названия вместо CPU/GPU" else "Show hardware names instead of CPU/GPU"
         
         findViewById<TextView>(R.id.language_text).text = if (isRussian) "Язык приложения" else "App Language"
-        findViewById<TextView>(R.id.language_desc).text = if (isRussian) "Переключение между RU и EN" else "Switch between RU and EN"
+        findViewById<TextView>(R.id.language_desc).text = if (isRussian) "Переключение между Русским и Английским" else "Switch between Russian and English"
 
         findViewById<TextView>(R.id.media_notif_text).text = if (isRussian) "Медиа в уведомлениях" else "Media in Notifications"
         findViewById<TextView>(R.id.media_notif_desc).text = if (isRussian) "Показывать плеер в шторке для активных устройств" else "Show player in shade for active devices"
+
+        findViewById<TextView>(R.id.media_section_title).text = if (isRussian) "УВЕДОМЛЕНИЯ И МЕДИА" else "NOTIFICATIONS & MEDIA"
 
         findViewById<TextView>(R.id.default_media_title).text = if (isRussian) "Приоритетное устройство в шторке" else "Priority Device in Shade"
         findViewById<TextView>(R.id.default_media_desc).text = if (isRussian) 
