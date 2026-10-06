@@ -1,7 +1,7 @@
 # PC Pulse
 ## Инструкция
-1. Скачать файл [PC Pulse.exe](https://github.com/EgorDushenkov/PCPulse-Samsung/releases/download/V3/PC.Pulse.exe) на ПК, запустить и дать все запрашиваеые разрешения.
-2. Скачать файл [PC Pulse.apk](https://github.com/EgorDushenkov/PCPulse-Samsung/releases/download/V3/PC.Pulse.apk) на смартфон и установить приложение.
+1. Скачать файл [PC Pulse.exe](https://github.com/EgorDushenkov/PCPulse_V2/releases/download/V4/PC.Pulse.exe) на ПК, запустить и дать все запрашиваеые разрешения.
+2. Скачать файл [PC Pulse.apk](https://github.com/EgorDushenkov/PCPulse_V2/releases/download/V4/PC.Pulse.apk) на смартфон и установить приложение.
 3. В приложении на смартфоне нажать "+" и в диалоговом окне ввести IP и одноразовый код доступа показанные в окне приложения на ПК.
 
 # Примечания:
