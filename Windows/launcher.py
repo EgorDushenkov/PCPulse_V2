@@ -17,7 +17,7 @@ def show_webview_window():
 
     url = f"http://127.0.0.1:{port}/gui.html"
     window = webview.create_window(
-        title="PC Pulse Server • Special Edition",
+        title="PC Pulse Server",
         url=url,
         width=460,
         height=540,

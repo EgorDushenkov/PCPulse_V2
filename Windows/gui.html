@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PC Pulse Server • Special Edition</title>
+    <title>PC Pulse Server</title>
     <style>
         :root {
             --bg-color: #080a10;
@@ -24,130 +24,97 @@
             margin: 0;
             padding: 0;
             user-select: none;
-            -webkit-user-select: none;
         }
 
         body {
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-            background: linear-gradient(135deg, #07090e 0%, #10131d 100%);
+            background-color: var(--bg-color);
             color: var(--text-main);
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             width: 100vw;
             height: 100vh;
-            position: relative;
         }
 
-        /* Full-window turquoise/violet aurora spotlight */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(450px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(0, 240, 255, 0.07), transparent 60%);
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* Ambient Animated Orbs (Turquoise & Violet accents only) */
+        /* Ambient Glowing Animated Orbs */
         .orb {
             position: absolute;
             border-radius: 50%;
-            filter: blur(75px);
+            filter: blur(80px);
             z-index: 0;
-            animation: floatOrb 14s ease-in-out infinite alternate;
             pointer-events: none;
+            opacity: 0.55;
+            animation: orbFloat 14s infinite alternate ease-in-out;
         }
 
         .orb-1 {
-            width: 260px;
-            height: 260px;
-            background: radial-gradient(circle, rgba(0, 240, 255, 0.14), transparent 70%);
-            top: -40px;
-            left: -40px;
+            width: 280px;
+            height: 280px;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.45) 0%, rgba(0, 240, 255, 0) 70%);
+            top: -60px;
+            left: -60px;
         }
 
         .orb-2 {
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(157, 78, 221, 0.14), transparent 70%);
-            bottom: -60px;
-            right: -40px;
-            animation-duration: 16s;
-            animation-delay: -3s;
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, rgba(157, 78, 221, 0.4) 0%, rgba(157, 78, 221, 0) 70%);
+            bottom: -80px;
+            right: -80px;
+            animation-delay: -5s;
         }
 
         .orb-3 {
             width: 220px;
             height: 220px;
-            background: radial-gradient(circle, rgba(32, 226, 215, 0.1), transparent 70%);
-            top: 45%;
-            left: 55%;
+            background: radial-gradient(circle, rgba(32, 226, 215, 0.3) 0%, rgba(32, 226, 215, 0) 70%);
+            top: 40%;
+            left: 30%;
             animation-duration: 18s;
-            animation-delay: -7s;
+            animation-delay: -9s;
         }
 
-        @keyframes floatOrb {
+        @keyframes orbFloat {
             0% {
                 transform: translate(0, 0) scale(1);
             }
 
             50% {
-                transform: translate(30px, -20px) scale(1.12);
+                transform: translate(30px, -40px) scale(1.15);
             }
 
             100% {
-                transform: translate(-15px, 30px) scale(0.95);
+                transform: translate(-30px, 30px) scale(0.9);
             }
         }
 
-        /* Canvas Background */
+        /* Background Particle Canvas */
         #bg-canvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 0;
+            z-index: 1;
             pointer-events: none;
         }
 
-        /* View Manager (Seamless Full-Window Slide Transitions) */
+        /* Views Container System */
         .view {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
+            max-width: 420px;
             padding: 24px 28px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            z-index: 10;
-            transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s ease;
+            box-sizing: border-box;
+            z-index: 2;
         }
 
         #main-view {
-            transform: translateX(0);
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        #special-view {
-            transform: translateX(100%);
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        body.show-special #main-view {
-            transform: translateX(-40px);
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        body.show-special #special-view {
-            transform: translateX(0);
             opacity: 1;
             pointer-events: auto;
         }
@@ -199,32 +166,7 @@
             -webkit-text-fill-color: transparent;
         }
 
-        /* Exclusive VIP Gold Star Button */
-        .star-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(255, 215, 0, 0.12);
-            border: 1px solid rgba(255, 215, 0, 0.4);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            position: relative;
-            z-index: 5;
-            color: var(--gold-primary);
-            font-size: 18px;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.18);
-        }
 
-        .star-btn:hover {
-            transform: rotate(72deg) scale(1.15);
-            background: rgba(255, 215, 0, 0.28);
-            border-color: var(--gold-primary);
-            color: #fff;
-            box-shadow: 0 0 25px rgba(255, 215, 0, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.5);
-        }
 
         /* Main Content Section */
         .main-content {
@@ -377,118 +319,6 @@
             box-shadow: 0 10px 25px rgba(255, 85, 85, 0.45);
         }
 
-        /* Shimmering Liquid Gold Calligraphy - Wild Glow on Hover & Fireworks on Click! */
-        .gold-calligraphy {
-            font-family: 'Segoe Script', 'Monotype Corsiva', 'Gabriola', 'Brush Script MT', cursive;
-            font-size: 15px;
-            font-weight: 700;
-            text-align: center;
-            white-space: nowrap;
-            background: linear-gradient(120deg, #ffd700 0%, #fff8e1 25%, #ffa000 50%, #ffd700 75%, #fff8e1 100%);
-            background-size: 300% auto;
-            color: transparent;
-            -webkit-background-clip: text;
-            background-clip: text;
-            animation: liquidGold 4s linear infinite;
-            display: inline-block;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            cursor: pointer;
-            border: none;
-            outline: none;
-            box-shadow: none;
-        }
-
-        @keyframes liquidGold {
-            0% {
-                background-position: 0% center;
-            }
-
-            100% {
-                background-position: 300% center;
-            }
-        }
-
-        /* WILD GOLDEN GLOW on Hover! */
-        .gold-calligraphy:hover {
-            transform: scale(1.08);
-            text-shadow: 0 0 12px rgba(255, 215, 0, 0.9), 0 0 28px rgba(255, 180, 0, 0.8), 0 0 50px rgba(255, 140, 0, 0.7), 0 0 80px rgba(255, 255, 255, 0.9);
-        }
-
-        /* Main Screen Banner */
-        #main-banner {
-            max-height: 0;
-            opacity: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
-            text-align: center;
-        }
-
-        #main-banner.show {
-            max-height: 60px;
-            opacity: 1;
-            padding-top: 6px;
-            overflow: visible;
-        }
-
-        /* Special View - Full window seamless VIP Easter Egg */
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(0, 240, 255, 0.25);
-            color: var(--accent-cyan);
-            padding: 8px 16px;
-            border-radius: 18px;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            align-self: flex-start;
-            z-index: 2;
-        }
-
-        .back-btn:hover {
-            background: rgba(0, 240, 255, 0.15);
-            border-color: var(--accent-cyan);
-            transform: translateX(-3px);
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
-        }
-
-        .special-title {
-            font-size: 21px;
-            margin-bottom: 2px;
-            z-index: 2;
-            position: relative;
-        }
-
-        .special-subtitle {
-            font-size: 12px;
-            color: #d4af37;
-            text-align: center;
-            font-style: italic;
-            margin-bottom: 12px;
-            z-index: 2;
-            position: relative;
-            opacity: 0.9;
-        }
-
-        .special-body {
-            font-size: 13px;
-            line-height: 1.55;
-            color: #e2e8f0;
-            text-align: center;
-            margin: auto 0;
-            z-index: 2;
-            position: relative;
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(15px);
-            padding: 16px;
-            border-radius: 20px;
-            border: 1px solid rgba(157, 78, 221, 0.25);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.08);
-        }
-
         /* Toggle Switch iOS 26 style */
         .toggle-wrapper {
             display: flex;
@@ -504,18 +334,9 @@
             transition: border-color 0.3s ease;
         }
 
-        .toggle-wrapper.gold-border {
-            border-color: rgba(255, 215, 0, 0.3);
-        }
-
         .toggle-wrapper:hover {
             border-color: var(--accent-cyan);
             box-shadow: 0 0 15px rgba(0, 240, 255, 0.18);
-        }
-
-        .toggle-wrapper.gold-border:hover {
-            border-color: var(--gold-primary);
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
         }
 
         .toggle-label {
@@ -569,11 +390,6 @@
             box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
         }
 
-        input:checked+.slider.gold-slider {
-            background: linear-gradient(90deg, #ffd700, #ffa000);
-            border-color: #ffd700;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-        }
 
         input:checked+.slider:before {
             transform: translateX(20px);
@@ -715,7 +531,6 @@
                 <div class="status-dot"></div>
                 <div class="title">PC Pulse Активен</div>
             </div>
-            <div class="star-btn" id="star-btn" title="Информация о специальной версии">★</div>
         </div>
 
         <div class="main-content">
@@ -740,34 +555,6 @@
                     <span class="slider"></span>
                 </label>
             </div>
-        </div>
-
-        <div id="main-banner">
-            <div class="gold-calligraphy salute-trigger" title="Нажмите для салюта!">✨ Special Edition for Shelikhov O. Yu. ✨</div>
-        </div>
-    </div>
-
-    <!-- SPECIAL EDITION VIP VIEW (Seamless Full Window!) -->
-    <div id="special-view" class="view">
-        <button class="back-btn" id="btn-back">← Главный экран</button>
-
-        <div style="text-align: center; margin-top: 6px;">
-            <div class="gold-calligraphy special-title salute-trigger" title="Нажмите для салюта!">Special Edition for Shelikhov O. Yu.</div>
-            <div class="special-subtitle">Эксклюзивная версия</div>
-        </div>
-
-        <div class="special-body">
-            В знак глубокой благодарности за Ваше наставничество,<br>
-            бесценный педагогический труд и веру в успех!<br><br>
-            <i>Спасибо за то, что вдохновляете на новые победы!</i>
-        </div>
-
-        <div class="toggle-wrapper gold-border">
-            <span class="toggle-label" style="color: #fff8e1;">Надпись на главном экране</span>
-            <label class="switch">
-                <input type="checkbox" id="toggle-banner">
-                <span class="slider gold-slider"></span>
-            </label>
         </div>
     </div>
 
@@ -797,12 +584,11 @@
             });
         });
 
-        // --- 2. Canvas Particle Background & FIREWORKS SALUTE ENGINE ---
+        // --- 2. Canvas Particle Background ---
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         let width, height;
         let particles = [];
-        let fireworks = [];
 
         function resize() {
             width = canvas.width = window.innerWidth;
@@ -835,50 +621,6 @@
                 ctx.fill();
                 ctx.shadowBlur = 0;
             }
-        }
-
-        // Fireworks Spark Class for the Salute!
-        class FireworkSpark {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                const angle = Math.random() * Math.PI * 2;
-                const speed = Math.random() * 6 + 2;
-                this.vx = Math.cos(angle) * speed;
-                this.vy = Math.sin(angle) * speed;
-                this.radius = Math.random() * 3 + 1.5;
-                this.alpha = 1;
-                this.decay = Math.random() * 0.02 + 0.015;
-                const colors = ['#ffd700', '#ffa000', '#ffffff', '#00f0ff', '#ffecb3'];
-                this.color = colors[Math.floor(Math.random() * colors.length)];
-            }
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vy += 0.08; // slight gravity
-                this.vx *= 0.96; // air resistance
-                this.vy *= 0.96;
-                this.alpha -= this.decay;
-            }
-            draw() {
-                if (this.alpha <= 0) return;
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.shadowBlur = 12;
-                ctx.shadowColor = this.color;
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-
-        function launchSalute(x, y) {
-            for (let i = 0; i < 70; i++) {
-                fireworks.push(new FireworkSpark(x, y));
-            }
-            showToast('🎆 Праздничный салют в честь Шелихова О. Ю.!', 'var(--gold-primary)');
         }
 
         for (let i = 0; i < 40; i++) particles.push(new Particle());
@@ -919,15 +661,6 @@
                 }
             }
 
-            // Update & Draw Fireworks
-            for (let i = fireworks.length - 1; i >= 0; i--) {
-                fireworks[i].update();
-                fireworks[i].draw();
-                if (fireworks[i].alpha <= 0) {
-                    fireworks.splice(i, 1);
-                }
-            }
-
             requestAnimationFrame(animate);
         }
         animate();
@@ -937,11 +670,7 @@
         const pinVal = document.getElementById('pin-val');
         const btnRefresh = document.getElementById('btn-refresh');
         const btnRevoke = document.getElementById('btn-revoke');
-        const starBtn = document.getElementById('star-btn');
-        const btnBack = document.getElementById('btn-back');
-        const toggleBanner = document.getElementById('toggle-banner');
         const toggleAutostart = document.getElementById('toggle-autostart');
-        const mainBanner = document.getElementById('main-banner');
         const confirmOverlay = document.getElementById('confirm-overlay');
         const btnCancelRevoke = document.getElementById('btn-cancel-revoke');
         const btnDoRevoke = document.getElementById('btn-do-revoke');
@@ -954,44 +683,6 @@
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
-
-        function updateBannerVisibility(show) {
-            if (show) {
-                mainBanner.classList.add('show');
-            } else {
-                mainBanner.classList.remove('show');
-            }
-            toggleBanner.checked = show;
-        }
-
-        starBtn.addEventListener('click', () => {
-            document.body.classList.add('show-special');
-        });
-
-        btnBack.addEventListener('click', () => {
-            document.body.classList.remove('show-special');
-        });
-
-        // Salute / Fireworks triggers on clicking any gold inscription
-        document.querySelectorAll('.salute-trigger').forEach(el => {
-            el.addEventListener('click', (e) => {
-                const rect = el.getBoundingClientRect();
-                const x = rect.left + rect.width / 2;
-                const y = rect.top + rect.height / 2;
-                launchSalute(x, y);
-            });
-        });
-
-        toggleBanner.addEventListener('change', () => {
-            const show = toggleBanner.checked;
-            updateBannerVisibility(show);
-            fetch('/local/special_edition', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ show: show })
-            }).catch(() => { });
-            showToast(show ? '✨ Эксклюзивная подпись включена!' : 'Подпись скрыта', 'var(--gold-primary)');
-        });
 
         toggleAutostart.addEventListener('change', () => {
             const enabled = toggleAutostart.checked;
@@ -1047,11 +738,6 @@
                         ipVal.textContent = data.ip.split(':')[0];
                     }
                     if (data.pin) pinVal.textContent = data.pin;
-                    if (data.show_special_edition !== undefined) {
-                        if (toggleBanner.checked !== data.show_special_edition) {
-                            updateBannerVisibility(data.show_special_edition);
-                        }
-                    }
                     if (data.autostart !== undefined) {
                         if (toggleAutostart.checked !== data.autostart) {
                             toggleAutostart.checked = data.autostart;

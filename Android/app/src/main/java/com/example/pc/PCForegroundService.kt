@@ -138,6 +138,8 @@ class PCForegroundService : Service() {
     private fun startForegroundService() {
         val notification = createNotification("Monitoring PCs...")
         startForeground(NOTIFICATION_ID, notification)
+        stopForeground(true)
+        getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         updateConnections()
     }
 
@@ -303,14 +305,8 @@ class PCForegroundService : Service() {
             }
         }
 
-        val onlineCount = deviceStats.size
-        val text = if (onlineCount > 0) {
-            "Devices online: $onlineCount"
-        } else {
-            "Searching for devices..."
-        }
-        val notification = createNotification(text)
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        stopForeground(true)
+        notificationManager.cancel(NOTIFICATION_ID)
     }
 
     private fun getOrCreateMediaSession(ip: String, stats: PCStats): MediaSessionCompat {

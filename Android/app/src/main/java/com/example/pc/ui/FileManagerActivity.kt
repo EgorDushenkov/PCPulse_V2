@@ -239,39 +239,71 @@ class FileManagerActivity : BaseActivity() {
         progressBar.visibility = View.VISIBLE
         api.downloadFs(p).enqueue(object : Callback<ResponseBody> {
             override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
-                progressBar.visibility = View.GONE
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null) {
-                        try {
-                            val downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
-                            val f = File(downloads, itm.name)
-                            var i = 1
-                            var dest = f
-                            while (dest.exists()) {
-                                val nameWithoutExt = itm.name.substringBeforeLast(".")
-                                val ext = if (itm.name.contains(".")) "." + itm.name.substringAfterLast(".") else ""
-                                dest = File(downloads, "$nameWithoutExt ($i)$ext")
-                                i++
+                        Thread {
+                            try {
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                    val contentValues = android.content.ContentValues().apply {
+                                        put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, itm.name)
+                                        put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+                                    }
+                                    val uri = contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                                    if (uri != null) {
+                                        contentResolver.openOutputStream(uri)?.use { out ->
+                                            body.byteStream().use { input ->
+                                                input.copyTo(out)
+                                            }
+                                        }
+                                    } else {
+                                        throw Exception("Failed to create MediaStore entry")
+                                    }
+                                } else {
+                                    val downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                                    downloads.mkdirs()
+                                    val f = File(downloads, itm.name)
+                                    var i = 1
+                                    var dest = f
+                                    while (dest.exists()) {
+                                        val nameWithoutExt = itm.name.substringBeforeLast(".")
+                                        val ext = if (itm.name.contains(".")) "." + itm.name.substringAfterLast(".") else ""
+                                        dest = File(downloads, "$nameWithoutExt ($i)$ext")
+                                        i++
+                                    }
+                                    val out = FileOutputStream(dest)
+                                    body.byteStream().use { input ->
+                                        input.copyTo(out)
+                                    }
+                                    out.close()
+                                }
+                                runOnUiThread {
+                                    progressBar.visibility = View.GONE
+                                    Toast.makeText(this@FileManagerActivity, if (isRussian) "Сохранено в загрузки (Downloads)" else "Saved to Downloads", Toast.LENGTH_SHORT).show()
+                                    selectedPaths.clear()
+                                    updateFab()
+                                    rvFiles.adapter?.notifyDataSetChanged()
+                                }
+                            } catch (e: Exception) {
+                                val err = e.localizedMessage ?: e.toString()
+                                runOnUiThread {
+                                    progressBar.visibility = View.GONE
+                                    Toast.makeText(this@FileManagerActivity, if (isRussian) "Ошибка сохранения: $err" else "Error saving: $err", Toast.LENGTH_SHORT).show()
+                                }
                             }
-                            val out = FileOutputStream(dest)
-                            out.write(body.bytes())
-                            out.close()
-                            Toast.makeText(this@FileManagerActivity, if (isRussian) "Сохранено в загрузки (Downloads)" else "Saved to Downloads", Toast.LENGTH_SHORT).show()
-                            selectedPaths.clear()
-                            updateFab()
-                            rvFiles.adapter?.notifyDataSetChanged()
-                        } catch (e: Exception) {
-                            Toast.makeText(this@FileManagerActivity, if (isRussian) "Ошибка сохранения: ${e.message}" else "Error saving: ${e.message}", Toast.LENGTH_SHORT).show()
-                        }
+                        }.start()
+                    } else {
+                        progressBar.visibility = View.GONE
                     }
                 } else {
+                    progressBar.visibility = View.GONE
                     Toast.makeText(this@FileManagerActivity, "Error ${response.code()}", Toast.LENGTH_SHORT).show()
                 }
             }
             override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                 progressBar.visibility = View.GONE
-                Toast.makeText(this@FileManagerActivity, "Fail: ${t.message}", Toast.LENGTH_SHORT).show()
+                val err = t.localizedMessage ?: t.toString()
+                Toast.makeText(this@FileManagerActivity, "Fail: $err", Toast.LENGTH_SHORT).show()
             }
         })
     }

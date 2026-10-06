@@ -334,7 +334,6 @@ public class WebServer {
             Map<String, Object> res = new HashMap<>();
             res.put("ip", monitor.getLocalIp());
             res.put("pin", auth.getPin());
-            res.put("show_special_edition", Preferences.userNodeForPackage(TrayAndGUI.class).getBoolean("show_special_edition_label", false));
             res.put("autostart", Preferences.userNodeForPackage(TrayAndGUI.class).getBoolean("autostart_enabled", false));
             ctx.json(res);
         });
@@ -351,17 +350,6 @@ public class WebServer {
             res.put("status", "ok");
             res.put("pin", auth.getPin());
             ctx.json(res);
-        });
-
-        app.post("/local/special_edition", ctx -> {
-            try {
-                var node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(ctx.body());
-                boolean show = node.has("show") && node.get("show").asBoolean();
-                Preferences.userNodeForPackage(TrayAndGUI.class).putBoolean("show_special_edition_label", show);
-                ctx.json(Collections.singletonMap("status", "ok"));
-            } catch (Exception e) {
-                ctx.status(400).result("Error");
-            }
         });
 
         app.post("/local/autostart", ctx -> {
